@@ -36,4 +36,24 @@ public class AuthController {
     public AuthResponse login(@RequestBody LoginRequest request){
         return authService.login(request);
     }
+
+    @Operation(summary = "Validate JWT token", description = "Validates a JWT token and returns user information")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Token validation result"),
+        @ApiResponse(responseCode = "400", description = "Invalid token format")
+    })
+    @PostMapping("/validate")
+    public TokenValidationResponse validateToken(@RequestBody RefreshTokenRequest request){
+        return authService.validateToken(request.getToken());
+    }
+
+    @Operation(summary = "Refresh JWT token", description = "Generates a new JWT token for a valid existing token")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Token refreshed successfully"),
+        @ApiResponse(responseCode = "400", description = "Invalid token or user not found")
+    })
+    @PostMapping("/refresh")
+    public AuthResponse refreshToken(@RequestBody RefreshTokenRequest request){
+        return authService.refreshToken(request);
+    }
 }

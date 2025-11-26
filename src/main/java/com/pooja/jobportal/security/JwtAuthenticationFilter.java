@@ -1,5 +1,6 @@
 package com.pooja.jobportal.security;
 
+import com.pooja.jobportal.repository.UserRepository;
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -13,9 +14,11 @@ import java.io.IOException;
 public class JwtAuthenticationFilter extends GenericFilter {
 
     private final JwtTokenProvider jwtTokenProvider;
+    private final UserRepository userRepository;
 
-    public JwtAuthenticationFilter(JwtTokenProvider jwtTokenProvider){
+    public JwtAuthenticationFilter(JwtTokenProvider jwtTokenProvider, UserRepository userRepository){
         this.jwtTokenProvider = jwtTokenProvider;
+        this.userRepository = userRepository;
     }
 
     @Override
@@ -33,12 +36,16 @@ public class JwtAuthenticationFilter extends GenericFilter {
             if(jwtTokenProvider.validateToken(token)) {
                 String email = jwtTokenProvider.getEmailFromToken(token);
 
-                UsernamePasswordAuthenticationToken auth =
-                        new UsernamePasswordAuthenticationToken(email, null, null);
+                // Fetch the full user object from database
+                userRepository.findByEmail(email).ifPresent(user -> {
+                    UserPrincipal userPrincipal = new UserPrincipal(user);
+                    UsernamePasswordAuthenticationToken auth =
+                            new UsernamePasswordAuthenticationToken(userPrincipal, null, userPrincipal.getAuthorities());
 
-                auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(req));
+                    auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(req));
 
-                SecurityContextHolder.getContext().setAuthentication(auth);
+                    SecurityContextHolder.getContext().setAuthentication(auth);
+                });
             }
         }
 

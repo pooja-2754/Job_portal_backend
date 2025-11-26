@@ -11,6 +11,9 @@ public class AuthResponse {
     @Schema(description = "JWT authentication token (null for signup)", example = "eyJhbGciOiJIUzI1NiJ9...")
     private String token;
     
+    @Schema(description = "User information (included on login)")
+    private UserResponse user;
+    
     @Schema(description = "Response message", example = "Login successful")
     private String message;
 }

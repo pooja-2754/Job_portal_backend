@@ -16,7 +16,7 @@ public class SignupRequest {
     @Schema(description = "Password for the user account", example = "password123", required = true)
     private String password;
     
-    @Schema(description = "Role of the user in the system", example = "JOB_SEEKER", required = true)
+    @Schema(description = "Role of the user in the system", example = "JOB_SEEKER", required = false)
     private Role role;
     
     @Schema(description = "Skills of the user (for job seekers)", example = "Java, Spring Boot, React")
