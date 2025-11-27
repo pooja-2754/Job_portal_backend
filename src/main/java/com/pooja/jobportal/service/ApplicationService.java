@@ -197,11 +197,16 @@ public class ApplicationService {
      * Convert Application entity to ApplicationResponse DTO
      */
     private ApplicationResponse convertToApplicationResponse(Application application) {
+        String companyName = null;
+        if (application.getJob().getCompany() != null) {
+            companyName = application.getJob().getCompany().getName();
+        }
+        
         return ApplicationResponse.builder()
                 .id(application.getId())
                 .jobId(application.getJob().getId())
                 .jobTitle(application.getJob().getTitle())
-                .jobCompany(application.getJob().getCompany())
+                .jobCompany(companyName)
                 .applicantName(application.getApplicantName())
                 .applicantEmail(application.getApplicantEmail())
                 .applicantPhone(application.getApplicantPhone())

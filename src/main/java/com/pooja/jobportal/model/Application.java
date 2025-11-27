@@ -45,6 +45,7 @@ public class Application {
     @Column(columnDefinition = "TEXT")
     private String education;
 
+    @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private ApplicationStatus status = ApplicationStatus.PENDING;

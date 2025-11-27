@@ -26,6 +26,7 @@ public class User {
 
     private String password;
 
+    @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Role role = Role.JOB_SEEKER;

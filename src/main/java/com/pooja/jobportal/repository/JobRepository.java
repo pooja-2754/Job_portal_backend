@@ -165,4 +165,9 @@ public interface JobRepository extends JpaRepository<Job, Long> {
      * Count all active jobs
      */
     long countByIsActiveTrue();
+    
+    /**
+     * Count jobs by company ID
+     */
+    long countByCompanyId(Long companyId);
 }
