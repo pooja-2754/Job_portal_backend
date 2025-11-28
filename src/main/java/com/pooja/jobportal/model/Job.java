@@ -24,13 +24,7 @@ public class Job {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "recruiter_id", nullable = false)
-    @JsonIgnore
-    @ToString.Exclude
-    private User recruiter;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "company_id")
+    @JoinColumn(name = "company_id", nullable = false)
     @JsonIgnore
     @ToString.Exclude
     private Company company;

@@ -32,18 +32,48 @@ public class DashboardController {
         @ApiResponse(responseCode = "403", description = "Forbidden - Only recruiters can access dashboard")
     })
     @GetMapping("/stats")
-    @PreAuthorize("hasRole('RECRUITER')")
+    @PreAuthorize("hasRole('RECRUITER') or hasRole('ADMIN')")
     public ResponseEntity<DashboardStatsResponse> getDashboardStats(
             @AuthenticationPrincipal UserPrincipal userPrincipal) {
         
         User user = userPrincipal.getUser();
-        
-        // Double-check role for additional security
-        if (user.getRole() != Role.RECRUITER) {
-            return ResponseEntity.status(403).build();
-        }
-        
         DashboardStatsResponse stats = dashboardService.getDashboardStats(user);
         return ResponseEntity.ok(stats);
+    }
+
+    @Operation(summary = "Get admin dashboard statistics", description = "Retrieves administrative dashboard statistics for system-wide overview")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Admin dashboard statistics retrieved successfully"),
+        @ApiResponse(responseCode = "401", description = "Unauthorized"),
+        @ApiResponse(responseCode = "403", description = "Forbidden - Admin access required")
+    })
+    @GetMapping("/admin-stats")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<DashboardStatsResponse> getAdminDashboardStats(
+            @AuthenticationPrincipal UserPrincipal userPrincipal) {
+        
+        User user = userPrincipal.getUser();
+        
+        // Get admin-specific statistics
+        DashboardStatsResponse adminStats = dashboardService.getAdminDashboardStats(user);
+        return ResponseEntity.ok(adminStats);
+    }
+
+    @Operation(summary = "Get job seeker dashboard", description = "Retrieves dashboard statistics for job seekers")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Job seeker dashboard statistics retrieved successfully"),
+        @ApiResponse(responseCode = "401", description = "Unauthorized"),
+        @ApiResponse(responseCode = "403", description = "Forbidden - Job seeker access required")
+    })
+    @GetMapping("/job-seeker-stats")
+    @PreAuthorize("hasRole('JOB_SEEKER')")
+    public ResponseEntity<DashboardStatsResponse> getJobSeekerDashboardStats(
+            @AuthenticationPrincipal UserPrincipal userPrincipal) {
+        
+        User user = userPrincipal.getUser();
+        
+        // Get job seeker-specific statistics
+        DashboardStatsResponse jobSeekerStats = dashboardService.getJobSeekerDashboardStats(user);
+        return ResponseEntity.ok(jobSeekerStats);
     }
 }

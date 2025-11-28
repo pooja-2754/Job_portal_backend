@@ -6,6 +6,7 @@ import com.pooja.jobportal.exception.ResourceNotFoundException;
 import com.pooja.jobportal.exception.UnauthorizedAccessException;
 import com.pooja.jobportal.model.Company;
 import com.pooja.jobportal.model.CompanyVerificationStatus;
+import com.pooja.jobportal.model.Role;
 import com.pooja.jobportal.model.User;
 import com.pooja.jobportal.repository.CompanyRepository;
 import com.pooja.jobportal.repository.JobRepository;
@@ -29,6 +30,7 @@ public class CompanyService {
 
     private final CompanyRepository companyRepository;
     private final JobRepository jobRepository;
+    private final AuditLogService auditLogService;
 
     /**
      * Create a new company
@@ -49,7 +51,7 @@ public class CompanyService {
                 .industry(companyRequest.getIndustry())
                 .companySize(companyRequest.getCompanySize())
                 .verificationStatus(CompanyVerificationStatus.PENDING)
-                .ownerId(user.getId())
+                .admin(user)
                 .build();
 
         Company savedCompany = companyRepository.save(company);
@@ -95,9 +97,12 @@ public class CompanyService {
         Company existingCompany = companyRepository.findById(companyId)
                 .orElseThrow(() -> new ResourceNotFoundException("Company not found with ID: " + companyId));
 
-        // Check if user is the owner or an admin
-        if (!existingCompany.getOwnerId().equals(user.getId()) && !user.getRole().name().equals("ADMIN")) {
-            throw new UnauthorizedAccessException("You are not authorized to update this company");
+        // Enhanced security check: Verify ownership or admin role
+        if (!isUserAuthorizedForCompany(existingCompany, user)) {
+            Long adminId = existingCompany.getAdmin() != null ? existingCompany.getAdmin().getId() : null;
+            throw new UnauthorizedAccessException("You are not authorized to update this company. " +
+                "Company ID: " + companyId + " is owned by admin ID: " + adminId +
+                ", but your user ID is: " + user.getId());
         }
 
         // Check if another company with the same name already exists
@@ -128,9 +133,12 @@ public class CompanyService {
         Company company = companyRepository.findById(companyId)
                 .orElseThrow(() -> new ResourceNotFoundException("Company not found with ID: " + companyId));
 
-        // Check if user is the owner or an admin
-        if (!company.getOwnerId().equals(user.getId()) && !user.getRole().name().equals("ADMIN")) {
-            throw new UnauthorizedAccessException("You are not authorized to delete this company");
+        // Enhanced security check: Verify ownership or admin role
+        if (!isUserAuthorizedForCompany(company, user)) {
+            Long adminId = company.getAdmin() != null ? company.getAdmin().getId() : null;
+            throw new UnauthorizedAccessException("You are not authorized to delete this company. " +
+                "Company ID: " + companyId + " is owned by admin ID: " + adminId +
+                ", but your user ID is: " + user.getId());
         }
 
         // Check if there are any jobs associated with this company
@@ -147,10 +155,10 @@ public class CompanyService {
      * Get companies owned by a specific user
      */
     @Transactional(readOnly = true)
-    public Page<CompanyResponse> getCompaniesByOwner(Long userId, Pageable pageable) {
-        log.debug("Fetching companies owned by user ID: {}", userId);
+    public Page<CompanyResponse> getCompaniesByAdmin(Long adminId, Pageable pageable) {
+        log.debug("Fetching companies owned by admin ID: {}", adminId);
 
-        Page<Company> companies = companyRepository.findByOwnerId(userId, pageable);
+        Page<Company> companies = companyRepository.findByAdmin_Id(adminId, pageable);
         List<CompanyResponse> companyResponses = companies.getContent().stream()
                 .map(this::convertToCompanyResponse)
                 .collect(Collectors.toList());
@@ -179,8 +187,9 @@ public class CompanyService {
     public CompanyResponse verifyCompany(Long companyId, User user) {
         log.info("Verifying company with ID: {} by admin: {}", companyId, user.getEmail());
 
-        if (!user.getRole().name().equals("ADMIN")) {
-            throw new UnauthorizedAccessException("Only administrators can verify companies");
+        // Enhanced security check: Verify admin role using Role enum
+        if (!user.getRole().equals(Role.ADMIN)) {
+            throw new UnauthorizedAccessException("Only administrators can verify companies. User role: " + user.getRole());
         }
 
         Company company = companyRepository.findById(companyId)
@@ -191,6 +200,9 @@ public class CompanyService {
 
         Company verifiedCompany = companyRepository.save(company);
         log.info("Company verified successfully with ID: {}", verifiedCompany.getId());
+        
+        // Audit logging for admin action
+        auditLogService.logCompanyApproval(user, companyId);
 
         return convertToCompanyResponse(verifiedCompany);
     }
@@ -201,8 +213,9 @@ public class CompanyService {
     public CompanyResponse rejectCompanyVerification(Long companyId, User user) {
         log.info("Rejecting verification for company with ID: {} by admin: {}", companyId, user.getEmail());
 
-        if (!user.getRole().name().equals("ADMIN")) {
-            throw new UnauthorizedAccessException("Only administrators can reject company verification");
+        // Enhanced security check: Verify admin role using Role enum
+        if (!user.getRole().equals(Role.ADMIN)) {
+            throw new UnauthorizedAccessException("Only administrators can reject company verification. User role: " + user.getRole());
         }
 
         Company company = companyRepository.findById(companyId)
@@ -213,8 +226,32 @@ public class CompanyService {
 
         Company rejectedCompany = companyRepository.save(company);
         log.info("Company verification rejected successfully with ID: {}", rejectedCompany.getId());
+        
+        // Audit logging for admin action
+        auditLogService.logCompanyRejection(user, companyId, "Company verification rejected by admin");
 
         return convertToCompanyResponse(rejectedCompany);
+    }
+
+    /**
+     * Helper method to check if user is authorized to access a company
+     * @param company The company to check
+     * @param user The user to verify
+     * @return true if user is authorized (owner or admin), false otherwise
+     */
+    private boolean isUserAuthorizedForCompany(Company company, User user) {
+        // Admin can access any company
+        if (user.getRole().equals(Role.ADMIN)) {
+            return true;
+        }
+        
+        // Company admin can access their own company
+        if (company.getAdmin() != null && company.getAdmin().getId().equals(user.getId())) {
+            return true;
+        }
+        
+        // All other cases are unauthorized
+        return false;
     }
 
     /**
@@ -222,13 +259,11 @@ public class CompanyService {
      */
     private CompanyResponse convertToCompanyResponse(Company company) {
         Long jobCount = jobRepository.countByCompanyId(company.getId());
-        String ownerName = null;
+        String adminName = null;
 
-        // Get owner name if owner ID is available
-        if (company.getOwnerId() != null) {
-            // This would require UserRepository, but for now we'll skip it
-            // In a real implementation, you would inject UserRepository and fetch the owner
-            ownerName = "Owner ID: " + company.getOwnerId();
+        // Get admin name if admin is available
+        if (company.getAdmin() != null) {
+            adminName = company.getAdmin().getName();
         }
 
         return CompanyResponse.builder()
@@ -241,11 +276,70 @@ public class CompanyService {
                 .companySize(company.getCompanySize())
                 .verificationStatus(company.getVerificationStatus())
                 .verifiedAt(company.getVerifiedAt())
-                .ownerId(company.getOwnerId())
-                .ownerName(ownerName)
+                .adminId(company.getAdmin() != null ? company.getAdmin().getId() : null)
+                .adminName(adminName)
                 .jobCount(jobCount)
                 .createdAt(company.getCreatedAt())
                 .updatedAt(company.getUpdatedAt())
                 .build();
+    }
+
+    /**
+     * Update a company by the company owner (self-update)
+     */
+    public CompanyResponse updateCompanyByOwner(Long companyId, CompanyRequest companyRequest, Company company) {
+        log.info("Updating company with ID: {} by owner: {}", companyId, company.getName());
+
+        // Verify that the company ID matches the authenticated company
+        if (!company.getId().equals(companyId)) {
+            throw new UnauthorizedAccessException("You can only update your own company profile");
+        }
+
+        // Check if another company with the same name already exists
+        if (!company.getName().equals(companyRequest.getName()) &&
+            companyRepository.existsByName(companyRequest.getName())) {
+            throw new IllegalArgumentException("Company with name '" + companyRequest.getName() + "' already exists");
+        }
+
+        // Update company fields (excluding sensitive fields that shouldn't be changed by owner)
+        company.setName(companyRequest.getName());
+        company.setLogoUrl(companyRequest.getLogoUrl());
+        company.setWebsite(companyRequest.getWebsite());
+        company.setDescription(companyRequest.getDescription());
+        company.setIndustry(companyRequest.getIndustry());
+        company.setCompanySize(companyRequest.getCompanySize());
+
+        Company updatedCompany = companyRepository.save(company);
+        log.info("Company updated successfully with ID: {}", updatedCompany.getId());
+
+        return convertToCompanyResponse(updatedCompany);
+    }
+
+    /**
+     * Delete a company by the company owner (self-delete)
+     */
+    public void deleteCompanyByOwner(Long companyId, Company company) {
+        log.info("Deleting company with ID: {} by owner: {}", companyId, company.getName());
+
+        // Verify that the company ID matches the authenticated company
+        if (!company.getId().equals(companyId)) {
+            throw new UnauthorizedAccessException("You can only delete your own company profile");
+        }
+
+        // Check if there are any jobs associated with this company
+        long jobCount = jobRepository.countByCompanyId(companyId);
+        if (jobCount > 0) {
+            throw new IllegalStateException("Cannot delete company with associated jobs. Please delete all jobs first.");
+        }
+
+        companyRepository.delete(company);
+        log.info("Company deleted successfully with ID: {}", companyId);
+    }
+
+    /**
+     * Check if the authenticated company is the owner of the specified company
+     */
+    public boolean isCompanyOwner(Long companyId, Long authenticatedCompanyId) {
+        return companyId.equals(authenticatedCompanyId);
     }
 }

@@ -23,6 +23,12 @@ public class Company {
     @Column(nullable = false, unique = true)
     private String name;
 
+    @Column(nullable = false, unique = true)
+    private String email;
+
+    @Column(nullable = false)
+    private String password;
+
     @Column(name = "logo_url")
     private String logoUrl;
 
@@ -40,13 +46,16 @@ public class Company {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "verification_status")
+    @Builder.Default
     private CompanyVerificationStatus verificationStatus = CompanyVerificationStatus.PENDING;
 
     @Column(name = "verified_at")
     private LocalDateTime verifiedAt;
 
-    @Column(name = "owner_id")
-    private Long ownerId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "admin_id")
+    @ToString.Exclude
+    private User admin;
 
     @OneToMany(mappedBy = "company", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @ToString.Exclude

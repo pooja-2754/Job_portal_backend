@@ -15,9 +15,13 @@ public interface CompanyRepository extends JpaRepository<Company, Long> {
     
     Optional<Company> findByName(String name);
     
+    Optional<Company> findByEmail(String email);
+    
     boolean existsByName(String name);
     
-    Page<Company> findByOwnerId(Long ownerId, Pageable pageable);
+    boolean existsByEmail(String email);
+    
+    Page<Company> findByAdmin_Id(Long adminId, Pageable pageable);
     
     @Query("SELECT c FROM Company c WHERE " +
            "LOWER(c.name) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +

@@ -34,6 +34,7 @@ public class SecurityConfig {
 
         http.authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/auth/**").permitAll()
+                .requestMatchers("/api/companies/signup", "/api/companies/login", "/api/companies/refresh", "/api/companies/validate").permitAll()
                 .requestMatchers("/api/applications").permitAll() // Allow public access to create applications
                 .requestMatchers("/api/public/jobs/**").permitAll() // Allow public access to job search
                 .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-resources/**").permitAll()

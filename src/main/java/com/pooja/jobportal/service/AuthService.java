@@ -24,7 +24,7 @@ public class AuthService {
     public AuthResponse signup(SignupRequest req) {
 
         if (userRepository.existsByEmail(req.getEmail())) {
-            return new AuthResponse(null, null, "Email already exists");
+            return AuthResponse.messageOnly("Email already exists");
         }
 
         User user = User.builder()
@@ -37,7 +37,7 @@ public class AuthService {
 
         userRepository.save(user);
 
-        return new AuthResponse(null, null, "User registered successfully");
+        return AuthResponse.messageOnly("User registered successfully");
     }
 
     public AuthResponse login(LoginRequest req) {
@@ -46,7 +46,7 @@ public class AuthService {
                 .orElse(null);
 
         if (user == null || !passwordEncoder.matches(req.getPassword(), user.getPassword())) {
-            return new AuthResponse(null, null, "Invalid Email or Password");
+            return AuthResponse.messageOnly("Invalid Email or Password");
         }
 
         String token = jwtTokenProvider.generateToken(user.getEmail());
@@ -59,7 +59,7 @@ public class AuthService {
             user.getSkills()
         );
 
-        return new AuthResponse(token, userResponse, "Login successful");
+        return AuthResponse.withUser(token, userResponse, "Login successful");
     }
 
     public TokenValidationResponse validateToken(String token) {
@@ -103,7 +103,7 @@ public class AuthService {
         JwtTokenProvider.TokenValidationResult validationResult = jwtTokenProvider.validateTokenDetailed(token);
         
         if (!validationResult.isValid()) {
-            return new AuthResponse(null, null, validationResult.getMessage());
+            return AuthResponse.messageOnly(validationResult.getMessage());
         }
 
         // Extract email from validation result
@@ -112,12 +112,12 @@ public class AuthService {
         // Check if user still exists
         User user = userRepository.findByEmail(email).orElse(null);
         if (user == null) {
-            return new AuthResponse(null, null, "User not found");
+            return AuthResponse.messageOnly("User not found");
         }
 
         // Generate new token
         String newToken = jwtTokenProvider.generateToken(email);
         
-        return new AuthResponse(newToken, null, "Token refreshed successfully");
+        return AuthResponse.messageOnly("Token refreshed successfully");
     }
 }

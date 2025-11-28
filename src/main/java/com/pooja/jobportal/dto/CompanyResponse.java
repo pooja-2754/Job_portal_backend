@@ -43,11 +43,14 @@ public class CompanyResponse {
     @Schema(description = "Verification timestamp")
     private LocalDateTime verifiedAt;
 
-    @Schema(description = "Company owner ID")
-    private Long ownerId;
+    @Schema(description = "Company email for authentication")
+    private String email;
 
-    @Schema(description = "Company owner name")
-    private String ownerName;
+    @Schema(description = "Admin ID who manages this company")
+    private Long adminId;
+
+    @Schema(description = "Admin name who manages this company")
+    private String adminName;
 
     @Schema(description = "Job count associated with this company")
     private Long jobCount;

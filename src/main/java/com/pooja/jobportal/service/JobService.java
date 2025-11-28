@@ -34,15 +34,15 @@ public class JobService {
     private final JobRepository jobRepository;
     private final ApplicationRepository applicationRepository;
     private final CompanyRepository companyRepository;
+    private final AuditLogService auditLogService;
 
     /**
-     * Create a new job for the recruiter
+     * Create a new job for the company
      */
-    public JobResponse createJob(JobRequest jobRequest, User recruiter) {
-        log.info("Creating new job for recruiter: {}", recruiter.getEmail());
+    public JobResponse createJob(JobRequest jobRequest, Company company) {
+        log.info("Creating new job for company: {}", company.getName());
 
-        // Handle company - either use existing or create new
-        Company company = handleCompany(jobRequest);
+        // Use the authenticated company directly
 
         // Convert location request to location entity
         Location location = convertToLocation(jobRequest.getLocation());
@@ -57,7 +57,6 @@ public class JobService {
         String sanitizedBenefits = sanitizeHtml(jobRequest.getBenefits());
 
         Job job = Job.builder()
-                .recruiter(recruiter)
                 .company(company)
                 .title(jobRequest.getTitle())
                 .status(jobRequest.getStatus() != null ? jobRequest.getStatus() : JobStatus.PUBLISHED)
@@ -83,13 +82,13 @@ public class JobService {
     }
 
     /**
-     * Get all jobs for a recruiter with pagination
+     * Get all jobs for a company with pagination
      */
     @Transactional(readOnly = true)
-    public Page<JobResponse> getJobsForRecruiter(User recruiter, Pageable pageable) {
-        log.debug("Fetching jobs for recruiter: {}", recruiter.getEmail());
+    public Page<JobResponse> getJobsForCompany(Company company, Pageable pageable) {
+        log.debug("Fetching jobs for company: {}", company.getName());
 
-        Page<Job> jobs = jobRepository.findByRecruiter(recruiter, pageable);
+        Page<Job> jobs = jobRepository.findByCompany(company, pageable);
         List<JobResponse> jobResponses = jobs.getContent().stream()
                 .map(this::convertToJobResponse)
                 .collect(Collectors.toList());
@@ -98,13 +97,13 @@ public class JobService {
     }
 
     /**
-     * Get active jobs for a recruiter with pagination
+     * Get active jobs for a company with pagination
      */
     @Transactional(readOnly = true)
-    public Page<JobResponse> getActiveJobsForRecruiter(User recruiter, Pageable pageable) {
-        log.debug("Fetching active jobs for recruiter: {}", recruiter.getEmail());
+    public Page<JobResponse> getActiveJobsForCompany(Company company, Pageable pageable) {
+        log.debug("Fetching active jobs for company: {}", company.getName());
 
-        Page<Job> jobs = jobRepository.findByRecruiterAndIsActiveTrue(recruiter, pageable);
+        Page<Job> jobs = jobRepository.findByCompanyAndIsActiveTrue(company, pageable);
         List<JobResponse> jobResponses = jobs.getContent().stream()
                 .map(this::convertToJobResponse)
                 .collect(Collectors.toList());
@@ -113,13 +112,13 @@ public class JobService {
     }
 
     /**
-     * Get a specific job by ID (only if it belongs to the recruiter)
+     * Get a specific job by ID (only if it belongs to the company)
      */
     @Transactional(readOnly = true)
-    public JobResponse getJobById(Long jobId, User recruiter) {
-        log.debug("Fetching job with ID: {} for recruiter: {}", jobId, recruiter.getEmail());
+    public JobResponse getJobById(Long jobId, Company company) {
+        log.debug("Fetching job with ID: {} for company: {}", jobId, company.getName());
 
-        Job job = jobRepository.findByIdAndRecruiter(jobId, recruiter)
+        Job job = jobRepository.findByIdAndCompany(jobId, company)
                 .orElseThrow(() -> new ResourceNotFoundException("Job not found with ID: " + jobId));
 
         return convertToJobResponse(job);
@@ -128,14 +127,13 @@ public class JobService {
     /**
      * Update an existing job
      */
-    public JobResponse updateJob(Long jobId, JobRequest jobRequest, User recruiter) {
-        log.info("Updating job with ID: {} for recruiter: {}", jobId, recruiter.getEmail());
+    public JobResponse updateJob(Long jobId, JobRequest jobRequest, Company company) {
+        log.info("Updating job with ID: {} for company: {}", jobId, company.getName());
 
-        Job existingJob = jobRepository.findByIdAndRecruiter(jobId, recruiter)
+        Job existingJob = jobRepository.findByIdAndCompany(jobId, company)
                 .orElseThrow(() -> new ResourceNotFoundException("Job not found with ID: " + jobId));
 
-        // Handle company - either use existing or create new
-        Company company = handleCompany(jobRequest);
+        // Use the authenticated company directly
         existingJob.setCompany(company);
 
         // Update job fields
@@ -184,10 +182,10 @@ public class JobService {
     /**
      * Delete a job
      */
-    public void deleteJob(Long jobId, User recruiter) {
-        log.info("Deleting job with ID: {} for recruiter: {}", jobId, recruiter.getEmail());
+    public void deleteJob(Long jobId, Company company) {
+        log.info("Deleting job with ID: {} for company: {}", jobId, company.getName());
 
-        Job job = jobRepository.findByIdAndRecruiter(jobId, recruiter)
+        Job job = jobRepository.findByIdAndCompany(jobId, company)
                 .orElseThrow(() -> new ResourceNotFoundException("Job not found with ID: " + jobId));
 
         jobRepository.delete(job);
@@ -195,13 +193,13 @@ public class JobService {
     }
 
     /**
-     * Search jobs by keyword for a recruiter
+     * Search jobs by keyword for a company
      */
     @Transactional(readOnly = true)
-    public Page<JobResponse> searchJobs(String keyword, User recruiter, Pageable pageable) {
-        log.debug("Searching jobs with keyword: {} for recruiter: {}", keyword, recruiter.getEmail());
+    public Page<JobResponse> searchJobs(String keyword, Company company, Pageable pageable) {
+        log.debug("Searching jobs with keyword: {} for company: {}", keyword, company.getName());
 
-        Page<Job> jobs = jobRepository.searchJobsByRecruiter(recruiter, keyword, pageable);
+        Page<Job> jobs = jobRepository.searchJobsByCompany(company, keyword, pageable);
         List<JobResponse> jobResponses = jobs.getContent().stream()
                 .map(this::convertToJobResponse)
                 .collect(Collectors.toList());
@@ -210,13 +208,13 @@ public class JobService {
     }
 
     /**
-     * Get jobs by type for a recruiter
+     * Get jobs by type for a company
      */
     @Transactional(readOnly = true)
-    public Page<JobResponse> getJobsByType(JobType jobType, User recruiter, Pageable pageable) {
-        log.debug("Fetching jobs of type: {} for recruiter: {}", jobType, recruiter.getEmail());
+    public Page<JobResponse> getJobsByType(JobType jobType, Company company, Pageable pageable) {
+        log.debug("Fetching jobs of type: {} for company: {}", jobType, company.getName());
 
-        Page<Job> jobs = jobRepository.findByRecruiterAndType(recruiter, jobType, pageable);
+        Page<Job> jobs = jobRepository.findByCompanyAndType(company, jobType, pageable);
         List<JobResponse> jobResponses = jobs.getContent().stream()
                 .map(this::convertToJobResponse)
                 .collect(Collectors.toList());
@@ -228,13 +226,13 @@ public class JobService {
      * Get jobs with approaching deadlines (within 7 days)
      */
     @Transactional(readOnly = true)
-    public List<JobResponse> getJobsWithApproachingDeadlines(User recruiter) {
-        log.debug("Fetching jobs with approaching deadlines for recruiter: {}", recruiter.getEmail());
+    public List<JobResponse> getJobsWithApproachingDeadlines(Company company) {
+        log.debug("Fetching jobs with approaching deadlines for company: {}", company.getName());
 
         LocalDate currentDate = LocalDate.now();
         LocalDate weekFromNow = currentDate.plusDays(7);
 
-        List<Job> jobs = jobRepository.findJobsWithApproachingDeadline(recruiter, currentDate, weekFromNow);
+        List<Job> jobs = jobRepository.findJobsWithApproachingDeadline(company, currentDate, weekFromNow);
         return jobs.stream()
                 .map(this::convertToJobResponse)
                 .collect(Collectors.toList());
@@ -244,14 +242,11 @@ public class JobService {
      * Convert Job entity to JobResponse DTO
      */
     private JobResponse convertToJobResponse(Job job) {
-        Long applicationCount = applicationRepository.countByJobIdAndRecruiter(job.getId(), job.getRecruiter());
+        Long applicationCount = applicationRepository.countByJobId(job.getId());
 
         return JobResponse.builder()
                 .id(job.getId())
                 .slug(job.getSlug())
-                .recruiterId(job.getRecruiter().getId())
-                .recruiterName(job.getRecruiter().getName())
-                .recruiterEmail(job.getRecruiter().getEmail())
                 .title(job.getTitle())
                 .status(job.getStatus())
                 .company(convertToCompanyResponse(job.getCompany()))
@@ -450,32 +445,10 @@ public class JobService {
 
     // Helper methods for conversion and sanitization
 
-    private Company handleCompany(JobRequest jobRequest) {
-        if (jobRequest.getCompanyId() != null) {
-            // Use existing company
-            return companyRepository.findById(jobRequest.getCompanyId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Company not found with ID: " + jobRequest.getCompanyId()));
-        } else if (jobRequest.getCompanyName() != null && !jobRequest.getCompanyName().trim().isEmpty()) {
-            // Create or find existing company by name
-            Optional<Company> existingCompany = companyRepository.findByName(jobRequest.getCompanyName());
-            if (existingCompany.isPresent()) {
-                return existingCompany.get();
-            } else {
-                Company newCompany = Company.builder()
-                        .name(jobRequest.getCompanyName())
-                        .website(jobRequest.getCompanyWebsite())
-                        .logoUrl(jobRequest.getCompanyLogoUrl())
-                        .description(jobRequest.getCompanyDescription())
-                        .industry(jobRequest.getCompanyIndustry())
-                        .companySize(jobRequest.getCompanySize())
-                        .verificationStatus(CompanyVerificationStatus.PENDING)
-                        .build();
-                return companyRepository.save(newCompany);
-            }
-        }
-        
-        // If no company information is provided, throw an exception
-        throw new IllegalArgumentException("Company information is required. Either provide a companyId or companyName.");
+    private Company handleCompany(JobRequest jobRequest, Company company) {
+        // For company-based job creation, we use the authenticated company directly
+        // No need for validation since the company is already authenticated
+        return company;
     }
 
     private Location convertToLocation(JobRequest.LocationRequest locationRequest) {
@@ -572,5 +545,113 @@ public class JobService {
         }
         // Use Jsoup to clean HTML, allowing basic formatting tags
         return Jsoup.clean(html, Safelist.basic());
+    }
+
+    // User-based methods for backward compatibility
+    
+    /**
+     * Create a new job for the user (recruiter)
+     */
+    public JobResponse createJob(JobRequest jobRequest, User user) {
+        // For now, we need to handle the User to Company conversion
+        // This is a placeholder implementation
+        throw new UnsupportedOperationException("User-based job creation is not supported. Please use Company-based methods.");
+    }
+
+    /**
+     * Get all jobs for a user (admin) with pagination
+     */
+    @Transactional(readOnly = true)
+    public Page<JobResponse> getJobsForAdmin(User user, Pageable pageable) {
+        // For now, return all jobs for admin
+        Page<Job> jobs = jobRepository.findAll(pageable);
+        List<JobResponse> jobResponses = jobs.getContent().stream()
+                .map(this::convertToJobResponse)
+                .collect(Collectors.toList());
+
+        return new PageImpl<>(jobResponses, pageable, jobs.getTotalElements());
+    }
+
+    /**
+     * Get active jobs for a user (admin) with pagination
+     */
+    @Transactional(readOnly = true)
+    public Page<JobResponse> getActiveJobsForAdmin(User user, Pageable pageable) {
+        // For now, return all active jobs for admin
+        Page<Job> jobs = jobRepository.findByIsActiveTrue(pageable);
+        List<JobResponse> jobResponses = jobs.getContent().stream()
+                .map(this::convertToJobResponse)
+                .collect(Collectors.toList());
+
+        return new PageImpl<>(jobResponses, pageable, jobs.getTotalElements());
+    }
+
+    /**
+     * Get a specific job by ID (only if it belongs to the user)
+     */
+    @Transactional(readOnly = true)
+    public JobResponse getJobById(Long jobId, User user) {
+        // For now, we need to handle the User to Company conversion
+        throw new UnsupportedOperationException("User-based job retrieval is not supported. Please use Company-based methods.");
+    }
+
+    /**
+     * Update an existing job
+     */
+    public JobResponse updateJob(Long jobId, JobRequest jobRequest, User user) {
+        // For now, we need to handle the User to Company conversion
+        throw new UnsupportedOperationException("User-based job update is not supported. Please use Company-based methods.");
+    }
+
+    /**
+     * Delete a job
+     */
+    public void deleteJob(Long jobId, User user) {
+        // For now, we need to handle the User to Company conversion
+        throw new UnsupportedOperationException("User-based job deletion is not supported. Please use Company-based methods.");
+    }
+
+    /**
+     * Search jobs by keyword for a user
+     */
+    @Transactional(readOnly = true)
+    public Page<JobResponse> searchJobs(String keyword, User user, Pageable pageable) {
+        // For now, return all active jobs matching the keyword
+        Page<Job> jobs = jobRepository.findActiveJobsByKeyword(keyword, pageable);
+        List<JobResponse> jobResponses = jobs.getContent().stream()
+                .map(this::convertToJobResponse)
+                .collect(Collectors.toList());
+
+        return new PageImpl<>(jobResponses, pageable, jobs.getTotalElements());
+    }
+
+    /**
+     * Get jobs by type for a user
+     */
+    @Transactional(readOnly = true)
+    public Page<JobResponse> getJobsByType(JobType jobType, User user, Pageable pageable) {
+        // For now, return all active jobs of the specified type
+        Page<Job> jobs = jobRepository.findByIsActiveTrueAndType(jobType, pageable);
+        List<JobResponse> jobResponses = jobs.getContent().stream()
+                .map(this::convertToJobResponse)
+                .collect(Collectors.toList());
+
+        return new PageImpl<>(jobResponses, pageable, jobs.getTotalElements());
+    }
+
+    /**
+     * Get jobs with approaching deadlines (within 7 days) for a user
+     */
+    @Transactional(readOnly = true)
+    public List<JobResponse> getJobsWithApproachingDeadlines(User user) {
+        // For now, return all jobs with approaching deadlines
+        LocalDate currentDate = LocalDate.now();
+        LocalDate weekFromNow = currentDate.plusDays(7);
+
+        // Use the admin-based method to get jobs with approaching deadlines
+        List<Job> jobs = jobRepository.findJobsWithApproachingDeadline(user, currentDate, weekFromNow);
+        return jobs.stream()
+                .map(this::convertToJobResponse)
+                .collect(Collectors.toList());
     }
 }

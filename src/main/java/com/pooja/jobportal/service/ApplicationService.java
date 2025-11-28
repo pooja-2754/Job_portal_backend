@@ -7,6 +7,7 @@ import com.pooja.jobportal.exception.ResourceNotFoundException;
 import com.pooja.jobportal.exception.UnauthorizedAccessException;
 import com.pooja.jobportal.model.Application;
 import com.pooja.jobportal.model.ApplicationStatus;
+import com.pooja.jobportal.model.Company;
 import com.pooja.jobportal.model.Job;
 import com.pooja.jobportal.model.User;
 import com.pooja.jobportal.repository.ApplicationRepository;
@@ -178,19 +179,127 @@ public class ApplicationService {
         return new PageImpl<>(applicationResponses, pageable, applications.getTotalElements());
     }
 
+    // Company-based methods (replacing recruiter-based methods)
+    
+    /**
+     * Get all applications for jobs posted by a company
+     */
+    @Transactional(readOnly = true)
+    public Page<ApplicationResponse> getApplicationsForCompany(Company company, Pageable pageable) {
+        log.debug("Fetching applications for company: {}", company.getName());
+
+        Page<Application> applications = applicationRepository.findByCompany(company, pageable);
+        List<ApplicationResponse> applicationResponses = applications.getContent().stream()
+                .map(this::convertToApplicationResponse)
+                .collect(Collectors.toList());
+
+        return new PageImpl<>(applicationResponses, pageable, applications.getTotalElements());
+    }
+
+    /**
+     * Get applications for a specific job (only if job belongs to company)
+     */
+    @Transactional(readOnly = true)
+    public Page<ApplicationResponse> getApplicationsByJob(Long jobId, Company company, Pageable pageable) {
+        log.debug("Fetching applications for job ID: {} for company: {}", jobId, company.getName());
+
+        Page<Application> applications = applicationRepository.findByJobIdAndCompany(jobId, company, pageable);
+        List<ApplicationResponse> applicationResponses = applications.getContent().stream()
+                .map(this::convertToApplicationResponse)
+                .collect(Collectors.toList());
+
+        return new PageImpl<>(applicationResponses, pageable, applications.getTotalElements());
+    }
+
+    /**
+     * Get applications by status for jobs posted by a company
+     */
+    @Transactional(readOnly = true)
+    public Page<ApplicationResponse> getApplicationsByStatus(ApplicationStatus status, Company company, Pageable pageable) {
+        log.debug("Fetching applications with status: {} for company: {}", status, company.getName());
+
+        Page<Application> applications = applicationRepository.findByCompanyAndStatus(company, status, pageable);
+        List<ApplicationResponse> applicationResponses = applications.getContent().stream()
+                .map(this::convertToApplicationResponse)
+                .collect(Collectors.toList());
+
+        return new PageImpl<>(applicationResponses, pageable, applications.getTotalElements());
+    }
+
+    /**
+     * Get recent applications for jobs posted by a company
+     */
+    @Transactional(readOnly = true)
+    public Page<ApplicationResponse> getRecentApplicationsByCompany(Company company, Pageable pageable) {
+        log.debug("Fetching recent applications for company: {}", company.getName());
+
+        Page<Application> applications = applicationRepository.findRecentApplicationsByCompany(company, pageable);
+        List<ApplicationResponse> applicationResponses = applications.getContent().stream()
+                .map(this::convertToApplicationResponse)
+                .collect(Collectors.toList());
+
+        return new PageImpl<>(applicationResponses, pageable, applications.getTotalElements());
+    }
+
     /**
      * Get old pending applications that need attention
      */
     @Transactional(readOnly = true)
-    public List<ApplicationResponse> getOldPendingApplications(User recruiter, int daysThreshold) {
-        log.debug("Fetching old pending applications for recruiter: {}", recruiter.getEmail());
+    public List<ApplicationResponse> getOldPendingApplications(Company company, int daysThreshold) {
+        log.debug("Fetching old pending applications for company: {}", company.getName());
 
         LocalDateTime cutoffDate = LocalDateTime.now().minusDays(daysThreshold);
-        List<Application> applications = applicationRepository.findOldPendingApplications(recruiter, cutoffDate);
+        List<Application> applications = applicationRepository.findOldPendingApplicationsByCompany(company, cutoffDate);
         
         return applications.stream()
                 .map(this::convertToApplicationResponse)
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * Get a specific application by ID (only if job belongs to company)
+     */
+    @Transactional(readOnly = true)
+    public ApplicationResponse getApplicationById(Long applicationId, Company company) {
+        log.debug("Fetching application with ID: {} for company: {}", applicationId, company.getName());
+
+        Application application = applicationRepository.findByIdAndCompany(applicationId, company)
+                .orElseThrow(() -> new ResourceNotFoundException("Application not found with ID: " + applicationId));
+
+        return convertToApplicationResponse(application);
+    }
+
+    /**
+     * Update application status for company-owned job
+     */
+    public ApplicationResponse updateApplicationStatus(Long applicationId, ApplicationStatusUpdateRequest statusUpdateRequest, Company company) {
+        log.info("Updating status for application ID: {} to: {} for company: {}",
+                applicationId, statusUpdateRequest.getStatus(), company.getName());
+
+        Application application = applicationRepository.findByIdAndCompanyForStatusUpdate(applicationId, company)
+                .orElseThrow(() -> new ResourceNotFoundException("Application not found with ID: " + applicationId));
+
+        application.setStatus(statusUpdateRequest.getStatus());
+        Application updatedApplication = applicationRepository.save(application);
+
+        log.info("Application status updated successfully for ID: {}", updatedApplication.getId());
+
+        return convertToApplicationResponse(updatedApplication);
+    }
+
+    /**
+     * Search applications by keyword for a company
+     */
+    @Transactional(readOnly = true)
+    public Page<ApplicationResponse> searchApplications(String keyword, Company company, Pageable pageable) {
+        log.debug("Searching applications with keyword: {} for company: {}", keyword, company.getName());
+
+        Page<Application> applications = applicationRepository.searchApplicationsByCompany(company, keyword, pageable);
+        List<ApplicationResponse> applicationResponses = applications.getContent().stream()
+                .map(this::convertToApplicationResponse)
+                .collect(Collectors.toList());
+
+        return new PageImpl<>(applicationResponses, pageable, applications.getTotalElements());
     }
 
     /**

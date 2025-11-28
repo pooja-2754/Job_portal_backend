@@ -3,10 +3,13 @@ package com.pooja.jobportal.service;
 import com.pooja.jobportal.dto.ApplicationResponse;
 import com.pooja.jobportal.dto.DashboardStatsResponse;
 import com.pooja.jobportal.model.ApplicationStatus;
+import com.pooja.jobportal.model.Company;
+import com.pooja.jobportal.model.CompanyVerificationStatus;
 import com.pooja.jobportal.model.Job;
 import com.pooja.jobportal.model.Role;
 import com.pooja.jobportal.model.User;
 import com.pooja.jobportal.repository.ApplicationRepository;
+import com.pooja.jobportal.repository.CompanyRepository;
 import com.pooja.jobportal.repository.JobRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -29,43 +32,40 @@ public class DashboardService {
     private final JobRepository jobRepository;
     private final ApplicationRepository applicationRepository;
     private final ApplicationService applicationService;
+    private final CompanyRepository companyRepository;
 
     /**
-     * Get comprehensive dashboard statistics for a recruiter
+     * Get comprehensive dashboard statistics for a company
+     * NOTE: This replaces the old recruiter-based dashboard
      */
-    public DashboardStatsResponse getDashboardStats(User recruiter) {
-        // Validate that the user is a recruiter
-        if (recruiter.getRole() != Role.RECRUITER) {
-            throw new IllegalArgumentException("Access denied. Only recruiters can access dashboard statistics.");
-        }
-        
-        log.debug("Generating dashboard statistics for recruiter: {}", recruiter.getEmail());
+    public DashboardStatsResponse getCompanyDashboardStats(Company company) {
+        log.debug("Generating dashboard statistics for company: {}", company.getName());
 
-        // Job statistics
-        long totalJobs = jobRepository.countByRecruiter(recruiter);
-        long activeJobs = jobRepository.countByRecruiterAndIsActiveTrue(recruiter);
+        // Job statistics for company
+        long totalJobs = jobRepository.countByCompany(company);
+        long activeJobs = jobRepository.countByCompanyAndIsActiveTrue(company);
         long inactiveJobs = totalJobs - activeJobs;
-        long expiredJobs = jobRepository.countExpiredJobsByRecruiter(recruiter, LocalDate.now());
+        long expiredJobs = jobRepository.countExpiredJobsByCompany(company, LocalDate.now());
 
-        // Application statistics
-        long totalApplications = applicationRepository.countByRecruiter(recruiter);
-        long pendingApplications = applicationRepository.countPendingApplicationsByRecruiter(recruiter);
-        long underReviewApplications = applicationRepository.countByRecruiterAndStatus(recruiter, ApplicationStatus.UNDER_REVIEW);
-        long shortlistedApplications = applicationRepository.countByRecruiterAndStatus(recruiter, ApplicationStatus.SHORTLISTED);
-        long rejectedApplications = applicationRepository.countByRecruiterAndStatus(recruiter, ApplicationStatus.REJECTED);
-        long acceptedApplications = applicationRepository.countByRecruiterAndStatus(recruiter, ApplicationStatus.ACCEPTED);
+        // Application statistics for company's jobs
+        long totalApplications = applicationRepository.countByCompany(company);
+        long pendingApplications = applicationRepository.countPendingApplicationsByCompany(company);
+        long underReviewApplications = applicationRepository.countByCompanyAndStatus(company, ApplicationStatus.UNDER_REVIEW);
+        long shortlistedApplications = applicationRepository.countByCompanyAndStatus(company, ApplicationStatus.SHORTLISTED);
+        long rejectedApplications = applicationRepository.countByCompanyAndStatus(company, ApplicationStatus.REJECTED);
+        long acceptedApplications = applicationRepository.countByCompanyAndStatus(company, ApplicationStatus.ACCEPTED);
 
         // Application status distribution
-        Map<String, Long> applicationStatusDistribution = getApplicationStatusDistribution(recruiter);
+        Map<String, Long> applicationStatusDistribution = getApplicationStatusDistributionForCompany(company);
 
         // Top jobs by applications
-        List<DashboardStatsResponse.JobApplicationCount> topJobsByApplications = getTopJobsByApplications(recruiter);
+        List<DashboardStatsResponse.JobApplicationCount> topJobsByApplications = getTopJobsByApplicationsForCompany(company);
 
         // Recent applications
-        List<ApplicationResponse> recentApplications = getRecentApplications(recruiter);
+        List<ApplicationResponse> recentApplications = getRecentApplicationsForCompany(company);
 
         // Jobs with approaching deadlines
-        List<DashboardStatsResponse.JobDeadlineAlert> jobsWithApproachingDeadlines = getJobsWithApproachingDeadlines(recruiter);
+        List<DashboardStatsResponse.JobDeadlineAlert> jobsWithApproachingDeadlines = getJobsWithApproachingDeadlinesForCompany(company);
 
         return DashboardStatsResponse.builder()
                 .totalJobs(totalJobs)
@@ -86,10 +86,10 @@ public class DashboardService {
     }
 
     /**
-     * Get application status distribution as a map
+     * Get application status distribution as a map for a company
      */
-    private Map<String, Long> getApplicationStatusDistribution(User recruiter) {
-        List<Object[]> results = applicationRepository.getApplicationStatusDistributionByRecruiter(recruiter);
+    private Map<String, Long> getApplicationStatusDistributionForCompany(Company company) {
+        List<Object[]> results = applicationRepository.getApplicationStatusDistributionByCompany(company);
         Map<String, Long> distribution = new HashMap<>();
 
         // Initialize all statuses with 0
@@ -108,10 +108,10 @@ public class DashboardService {
     }
 
     /**
-     * Get top 5 jobs with most applications
+     * Get top 5 jobs with most applications for a company
      */
-    private List<DashboardStatsResponse.JobApplicationCount> getTopJobsByApplications(User recruiter) {
-        List<Object[]> results = applicationRepository.getApplicationCountPerJobByRecruiter(recruiter);
+    private List<DashboardStatsResponse.JobApplicationCount> getTopJobsByApplicationsForCompany(Company company) {
+        List<Object[]> results = applicationRepository.getApplicationCountPerJobByCompany(company);
         
         return results.stream()
                 .limit(5)
@@ -124,23 +124,23 @@ public class DashboardService {
     }
 
     /**
-     * Get recent applications (last 5)
+     * Get recent applications (last 5) for a company
      */
-    private List<ApplicationResponse> getRecentApplications(User recruiter) {
+    private List<ApplicationResponse> getRecentApplicationsForCompany(Company company) {
         // Using a small page size to get just the most recent 5
         org.springframework.data.domain.Pageable pageable = 
                 org.springframework.data.domain.PageRequest.of(0, 5, 
                         org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "appliedDate"));
         
-        return applicationService.getRecentApplications(recruiter, pageable).getContent();
+        return applicationService.getRecentApplicationsByCompany(company, pageable).getContent();
     }
 
     /**
-     * Get jobs with approaching deadlines (within 7 days)
+     * Get jobs with approaching deadlines (within 7 days) for a company
      */
-    private List<DashboardStatsResponse.JobDeadlineAlert> getJobsWithApproachingDeadlines(User recruiter) {
+    private List<DashboardStatsResponse.JobDeadlineAlert> getJobsWithApproachingDeadlinesForCompany(Company company) {
         List<Job> jobs = jobRepository.findJobsWithApproachingDeadline(
-                recruiter, LocalDate.now(), LocalDate.now().plusDays(7));
+                company, LocalDate.now(), LocalDate.now().plusDays(7));
 
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
@@ -148,7 +148,7 @@ public class DashboardService {
                 .map(job -> {
                     long daysUntilDeadline = java.time.temporal.ChronoUnit.DAYS.between(
                             LocalDate.now(), job.getDeadline());
-                    
+                     
                     return new DashboardStatsResponse.JobDeadlineAlert(
                             job.getId(),
                             job.getTitle(),
@@ -158,4 +158,78 @@ public class DashboardService {
                 })
                 .collect(Collectors.toList());
     }
+
+    /**
+     * Get comprehensive dashboard statistics for an admin
+     */
+    public DashboardStatsResponse getAdminDashboardStats(User admin) {
+        // Validate that user is an admin
+        if (admin.getRole() != Role.ADMIN) {
+            throw new IllegalArgumentException("Access denied. Only administrators can access admin dashboard statistics.");
+        }
+        
+        log.debug("Generating admin dashboard statistics for: {}", admin.getEmail());
+
+        // System-wide statistics - simplified for admin dashboard
+        long totalJobs = jobRepository.count();
+        long activeJobs = jobRepository.countByIsActiveTrue();
+        long totalApplications = applicationRepository.count();
+
+        return DashboardStatsResponse.builder()
+                .totalJobs(totalJobs)
+                .activeJobs(activeJobs)
+                .totalApplications(totalApplications)
+                .build();
+    }
+
+    /**
+     * Get comprehensive dashboard statistics for a job seeker
+     */
+    public DashboardStatsResponse getJobSeekerDashboardStats(User jobSeeker) {
+        // Validate that user is a job seeker
+        if (jobSeeker.getRole() != Role.JOB_SEEKER) {
+            throw new IllegalArgumentException("Access denied. Only job seekers can access job seeker dashboard statistics.");
+        }
+        
+        log.debug("Generating job seeker dashboard statistics for: {}", jobSeeker.getEmail());
+
+        // Job seeker statistics - simplified to use existing methods
+        // For now, return basic stats since application-specific methods for applicants don't exist
+        return DashboardStatsResponse.builder()
+                .totalApplications(0L) // Placeholder
+                .pendingApplications(0L) // Placeholder
+                .underReviewApplications(0L) // Placeholder
+                .shortlistedApplications(0L) // Placeholder
+                .rejectedApplications(0L) // Placeholder
+                .acceptedApplications(0L) // Placeholder
+                .build();
+    }
+
+    /**
+     * Get comprehensive dashboard statistics for a user (recruiter or admin)
+     * This method determines the appropriate dashboard based on user role
+     */
+    public DashboardStatsResponse getDashboardStats(User user) {
+        if (user.getRole() == Role.ADMIN) {
+            return getAdminDashboardStats(user);
+        } else if (user.getRole() == Role.JOB_SEEKER) {
+            return getJobSeekerDashboardStats(user);
+        } else {
+            // For recruiters, we would need to implement a recruiter-specific dashboard
+            // For now, return a basic implementation
+            return DashboardStatsResponse.builder()
+                    .totalJobs(0L) // Placeholder
+                    .activeJobs(0L) // Placeholder
+                    .totalApplications(0L) // Placeholder
+                    .pendingApplications(0L) // Placeholder
+                    .underReviewApplications(0L) // Placeholder
+                    .shortlistedApplications(0L) // Placeholder
+                    .rejectedApplications(0L) // Placeholder
+                    .acceptedApplications(0L) // Placeholder
+                    .build();
+        }
+    }
+
+    // Note: Job seeker dashboard methods would need additional repository methods
+    // For now, we'll keep the simplified implementation above
 }

@@ -1,5 +1,6 @@
 package com.pooja.jobportal.repository;
 
+import com.pooja.jobportal.model.Company;
 import com.pooja.jobportal.model.Job;
 import com.pooja.jobportal.model.JobType;
 import com.pooja.jobportal.model.User;
@@ -17,81 +18,7 @@ import java.util.Optional;
 @Repository
 public interface JobRepository extends JpaRepository<Job, Long> {
 
-    /**
-     * Find all jobs posted by a specific recruiter
-     */
-    Page<Job> findByRecruiter(User recruiter, Pageable pageable);
-
-    /**
-     * Find all active jobs posted by a specific recruiter
-     */
-    Page<Job> findByRecruiterAndIsActiveTrue(User recruiter, Pageable pageable);
-
-    /**
-     * Find all inactive jobs posted by a specific recruiter
-     */
-    Page<Job> findByRecruiterAndIsActiveFalse(User recruiter, Pageable pageable);
-
-    /**
-     * Find jobs by recruiter and job type
-     */
-    Page<Job> findByRecruiterAndType(User recruiter, JobType type, Pageable pageable);
-
-    /**
-     * Find jobs by recruiter with deadline after the specified date
-     */
-    Page<Job> findByRecruiterAndDeadlineAfter(User recruiter, LocalDate date, Pageable pageable);
-
-    /**
-     * Find jobs by recruiter with deadline before the specified date (expired jobs)
-     */
-    Page<Job> findByRecruiterAndDeadlineBefore(User recruiter, LocalDate date, Pageable pageable);
-
-    /**
-     * Count total jobs posted by a recruiter
-     */
-    long countByRecruiter(User recruiter);
-
-    /**
-     * Count active jobs posted by a recruiter
-     */
-    long countByRecruiterAndIsActiveTrue(User recruiter);
-
-    /**
-     * Count expired jobs posted by a recruiter
-     */
-    @Query("SELECT COUNT(j) FROM Job j WHERE j.recruiter = :recruiter AND j.deadline < :currentDate")
-    long countExpiredJobsByRecruiter(@Param("recruiter") User recruiter, @Param("currentDate") LocalDate currentDate);
-
-    /**
-     * Find a job by ID and recruiter (to ensure recruiters can only access their own jobs)
-     */
-    Optional<Job> findByIdAndRecruiter(Long id, User recruiter);
-
-    /**
-     * Search jobs by title or company for a specific recruiter
-     */
-    @Query("SELECT j FROM Job j WHERE j.recruiter = :recruiter AND " +
-           "(LOWER(j.title) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
-           "LOWER(j.company) LIKE LOWER(CONCAT('%', :keyword, '%')))")
-    Page<Job> searchJobsByRecruiter(@Param("recruiter") User recruiter, 
-                                   @Param("keyword") String keyword, 
-                                   Pageable pageable);
-
-    /**
-     * Find recent jobs posted by a recruiter (ordered by posted date)
-     */
-    @Query("SELECT j FROM Job j WHERE j.recruiter = :recruiter ORDER BY j.postedDate DESC")
-    Page<Job> findRecentJobsByRecruiter(@Param("recruiter") User recruiter, Pageable pageable);
-
-    /**
-     * Find jobs that need attention (deadline approaching within 7 days)
-     */
-    @Query("SELECT j FROM Job j WHERE j.recruiter = :recruiter AND j.isActive = true AND " +
-           "j.deadline BETWEEN :currentDate AND :weekFromNow")
-    List<Job> findJobsWithApproachingDeadline(@Param("recruiter") User recruiter,
-                                              @Param("currentDate") LocalDate currentDate,
-                                              @Param("weekFromNow") LocalDate weekFromNow);
+    // Note: Recruiter-based methods have been removed as the Job entity now uses Company instead of recruiter
 
     // Public job search methods for job seekers
     
@@ -170,4 +97,128 @@ public interface JobRepository extends JpaRepository<Job, Long> {
      * Count jobs by company ID
      */
     long countByCompanyId(Long companyId);
+
+    /**
+     * Count total jobs posted by a company
+     */
+    long countByCompany(Company company);
+
+    /**
+     * Count active jobs posted by a company
+     */
+    long countByCompanyAndIsActiveTrue(Company company);
+
+    /**
+     * Count expired jobs posted by a company
+     */
+    @Query("SELECT COUNT(j) FROM Job j WHERE j.company = :company AND j.deadline < :currentDate")
+    long countExpiredJobsByCompany(@Param("company") Company company, @Param("currentDate") LocalDate currentDate);
+
+    // Admin-based methods (replacing recruiter-based methods)
+    
+    /**
+     * Find all jobs posted by a specific admin (through their companies)
+     */
+    @Query("SELECT j FROM Job j WHERE j.company.admin = :admin")
+    Page<Job> findByAdmin(@Param("admin") User admin, Pageable pageable);
+
+    /**
+     * Find all active jobs posted by a specific admin (through their companies)
+     */
+    @Query("SELECT j FROM Job j WHERE j.company.admin = :admin AND j.isActive = true")
+    Page<Job> findByAdminAndIsActiveTrue(@Param("admin") User admin, Pageable pageable);
+
+    /**
+     * Find jobs by admin and job type
+     */
+    @Query("SELECT j FROM Job j WHERE j.company.admin = :admin AND j.type = :type")
+    Page<Job> findByAdminAndType(@Param("admin") User admin, @Param("type") JobType type, Pageable pageable);
+
+    /**
+     * Find a job by ID and admin (to ensure admins can only access jobs from their companies)
+     */
+    @Query("SELECT j FROM Job j WHERE j.id = :id AND j.company.admin = :admin")
+    Optional<Job> findByIdAndAdmin(@Param("id") Long id, @Param("admin") User admin);
+
+    /**
+     * Search jobs by title or company for a specific admin
+     */
+    @Query("SELECT j FROM Job j WHERE j.company.admin = :admin AND " +
+           "(LOWER(j.title) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+           "LOWER(j.company.name) LIKE LOWER(CONCAT('%', :keyword, '%')))")
+    Page<Job> searchJobsByAdmin(@Param("admin") User admin,
+                                   @Param("keyword") String keyword,
+                                   Pageable pageable);
+
+    /**
+     * Find jobs that need attention (deadline approaching within 7 days)
+     */
+    @Query("SELECT j FROM Job j WHERE j.company.admin = :admin AND j.isActive = true AND " +
+           "j.deadline BETWEEN :currentDate AND :weekFromNow")
+    List<Job> findJobsWithApproachingDeadline(@Param("admin") User admin,
+                                              @Param("currentDate") LocalDate currentDate,
+                                              @Param("weekFromNow") LocalDate weekFromNow);
+
+    // Company-based methods (replacing recruiter-based methods)
+    
+    /**
+     * Find all jobs posted by a specific company
+     */
+    Page<Job> findByCompany(Company company, Pageable pageable);
+
+    /**
+     * Find all active jobs posted by a specific company
+     */
+    Page<Job> findByCompanyAndIsActiveTrue(Company company, Pageable pageable);
+
+    /**
+     * Find all inactive jobs posted by a specific company
+     */
+    Page<Job> findByCompanyAndIsActiveFalse(Company company, Pageable pageable);
+
+    /**
+     * Find jobs by company and job type
+     */
+    Page<Job> findByCompanyAndType(Company company, JobType type, Pageable pageable);
+
+    /**
+     * Find jobs by company with deadline after specified date
+     */
+    Page<Job> findByCompanyAndDeadlineAfter(Company company, LocalDate date, Pageable pageable);
+
+    /**
+     * Find jobs by company with deadline before specified date (expired jobs)
+     */
+    Page<Job> findByCompanyAndDeadlineBefore(Company company, LocalDate date, Pageable pageable);
+
+
+    /**
+     * Find a job by ID and company (to ensure companies can only access their own jobs)
+     */
+    Optional<Job> findByIdAndCompany(Long id, Company company);
+
+    /**
+     * Search jobs by title or company for a specific company
+     */
+    @Query("SELECT j FROM Job j WHERE j.company = :company AND " +
+           "(LOWER(j.title) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+           "LOWER(j.company.name) LIKE LOWER(CONCAT('%', :keyword, '%'))) ORDER BY j.postedDate DESC")
+    Page<Job> searchJobsByCompany(@Param("company") Company company,
+                                  @Param("keyword") String keyword,
+                                  Pageable pageable);
+
+    /**
+     * Find recent jobs posted by a company (ordered by posted date)
+     */
+    @Query("SELECT j FROM Job j WHERE j.company = :company ORDER BY j.postedDate DESC")
+    Page<Job> findRecentJobsByCompany(@Param("company") Company company, Pageable pageable);
+
+    /**
+     * Find jobs that need attention (deadline approaching within 7 days) for a company
+     */
+    @Query("SELECT j FROM Job j WHERE j.company = :company AND j.isActive = true AND " +
+           "j.deadline BETWEEN :currentDate AND :weekFromNow")
+    List<Job> findJobsWithApproachingDeadline(@Param("company") Company company,
+                                              @Param("currentDate") LocalDate currentDate,
+                                              @Param("weekFromNow") LocalDate weekFromNow);
 }

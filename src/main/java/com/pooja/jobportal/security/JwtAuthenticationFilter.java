@@ -1,5 +1,6 @@
 package com.pooja.jobportal.security;
 
+import com.pooja.jobportal.repository.CompanyRepository;
 import com.pooja.jobportal.repository.UserRepository;
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
@@ -15,10 +16,12 @@ public class JwtAuthenticationFilter extends GenericFilter {
 
     private final JwtTokenProvider jwtTokenProvider;
     private final UserRepository userRepository;
+    private final CompanyRepository companyRepository;
 
-    public JwtAuthenticationFilter(JwtTokenProvider jwtTokenProvider, UserRepository userRepository){
+    public JwtAuthenticationFilter(JwtTokenProvider jwtTokenProvider, UserRepository userRepository, CompanyRepository companyRepository){
         this.jwtTokenProvider = jwtTokenProvider;
         this.userRepository = userRepository;
+        this.companyRepository = companyRepository;
     }
 
     @Override
@@ -33,19 +36,35 @@ public class JwtAuthenticationFilter extends GenericFilter {
 
             String token = authHeader.substring(7);
 
-            if(jwtTokenProvider.validateToken(token)) {
-                String email = jwtTokenProvider.getEmailFromToken(token);
+            JwtTokenProvider.TokenValidationResult validationResult = jwtTokenProvider.validateTokenDetailed(token);
+            
+            if (validationResult.isValid()) {
+                String email = validationResult.getEmail();
+                String entityType = validationResult.getEntityType();
 
-                // Fetch the full user object from database
-                userRepository.findByEmail(email).ifPresent(user -> {
-                    UserPrincipal userPrincipal = new UserPrincipal(user);
-                    UsernamePasswordAuthenticationToken auth =
-                            new UsernamePasswordAuthenticationToken(userPrincipal, null, userPrincipal.getAuthorities());
+                if ("COMPANY".equals(entityType)) {
+                    // Handle company authentication
+                    companyRepository.findByEmail(email).ifPresent(company -> {
+                        CompanyPrincipal companyPrincipal = new CompanyPrincipal(company);
+                        UsernamePasswordAuthenticationToken auth =
+                                new UsernamePasswordAuthenticationToken(companyPrincipal, null, companyPrincipal.getAuthorities());
 
-                    auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(req));
+                        auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(req));
 
-                    SecurityContextHolder.getContext().setAuthentication(auth);
-                });
+                        SecurityContextHolder.getContext().setAuthentication(auth);
+                    });
+                } else {
+                    // Handle user authentication (default behavior)
+                    userRepository.findByEmail(email).ifPresent(user -> {
+                        UserPrincipal userPrincipal = new UserPrincipal(user);
+                        UsernamePasswordAuthenticationToken auth =
+                                new UsernamePasswordAuthenticationToken(userPrincipal, null, userPrincipal.getAuthorities());
+
+                        auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(req));
+
+                        SecurityContextHolder.getContext().setAuthentication(auth);
+                    });
+                }
             }
         }
 
