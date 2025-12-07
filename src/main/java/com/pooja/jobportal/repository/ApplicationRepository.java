@@ -120,6 +120,16 @@ public interface ApplicationRepository extends JpaRepository<Application, Long> 
      * Check if an application already exists for a job and email
      */
     boolean existsByJobIdAndApplicantEmail(Long jobId, String applicantEmail);
+    
+    /**
+     * Check if an application already exists for a job and candidate
+     */
+    boolean existsByJobAndCandidate(Job job, User candidate);
+    
+    /**
+     * Find application by job and candidate
+     */
+    Optional<Application> findByJobAndCandidate(Job job, User candidate);
 
     /**
      * Count applications for a specific job (public endpoint)

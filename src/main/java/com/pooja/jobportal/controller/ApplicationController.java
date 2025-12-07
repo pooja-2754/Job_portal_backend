@@ -3,6 +3,7 @@ package com.pooja.jobportal.controller;
 import com.pooja.jobportal.dto.ApplicationRequest;
 import com.pooja.jobportal.dto.ApplicationResponse;
 import com.pooja.jobportal.dto.ApplicationStatusUpdateRequest;
+import com.pooja.jobportal.dto.StreamlinedApplicationRequest;
 import com.pooja.jobportal.model.ApplicationStatus;
 import com.pooja.jobportal.model.Company;
 import com.pooja.jobportal.model.User;
@@ -47,6 +48,26 @@ public class ApplicationController {
             @Valid @RequestBody ApplicationRequest applicationRequest) {
         
         ApplicationResponse applicationResponse = applicationService.createApplication(applicationRequest);
+        return ResponseEntity.status(HttpStatus.CREATED).body(applicationResponse);
+    }
+
+    @Operation(summary = "Create a new application for authenticated candidate", description = "Submits a new application for a job using authenticated user's profile data")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "201", description = "Application created successfully"),
+        @ApiResponse(responseCode = "400", description = "Invalid input data, incomplete profile, or application already exists"),
+        @ApiResponse(responseCode = "404", description = "Job not found or not active"),
+        @ApiResponse(responseCode = "401", description = "Unauthorized - User must be authenticated"),
+        @ApiResponse(responseCode = "403", description = "Forbidden - Only job seekers can apply")
+    })
+    @PostMapping("/candidate")
+    @PreAuthorize("hasRole('JOB_SEEKER')")
+    public ResponseEntity<ApplicationResponse> applyAsCandidate(
+            @Valid @RequestBody StreamlinedApplicationRequest applicationRequest,
+            @AuthenticationPrincipal UserPrincipal userPrincipal) {
+        
+        User user = userPrincipal.getUser();
+        ApplicationResponse applicationResponse = applicationService.applyAsCandidateWithCustomResume(
+                applicationRequest, user);
         return ResponseEntity.status(HttpStatus.CREATED).body(applicationResponse);
     }
 

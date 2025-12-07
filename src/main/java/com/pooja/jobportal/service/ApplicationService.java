@@ -3,15 +3,20 @@ package com.pooja.jobportal.service;
 import com.pooja.jobportal.dto.ApplicationRequest;
 import com.pooja.jobportal.dto.ApplicationResponse;
 import com.pooja.jobportal.dto.ApplicationStatusUpdateRequest;
+import com.pooja.jobportal.dto.StreamlinedApplicationRequest;
+import com.pooja.jobportal.exception.DuplicateApplicationException;
+import com.pooja.jobportal.exception.IncompleteProfileException;
 import com.pooja.jobportal.exception.ResourceNotFoundException;
 import com.pooja.jobportal.exception.UnauthorizedAccessException;
 import com.pooja.jobportal.model.Application;
 import com.pooja.jobportal.model.ApplicationStatus;
 import com.pooja.jobportal.model.Company;
 import com.pooja.jobportal.model.Job;
+import com.pooja.jobportal.model.Resume;
 import com.pooja.jobportal.model.User;
 import com.pooja.jobportal.repository.ApplicationRepository;
 import com.pooja.jobportal.repository.JobRepository;
+import com.pooja.jobportal.repository.ResumeRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -32,6 +37,7 @@ public class ApplicationService {
 
     private final ApplicationRepository applicationRepository;
     private final JobRepository jobRepository;
+    private final ResumeRepository resumeRepository;
 
     /**
      * Create a new application for a job
@@ -69,6 +75,99 @@ public class ApplicationService {
 
         Application savedApplication = applicationRepository.save(application);
         log.info("Application created successfully with ID: {}", savedApplication.getId());
+
+        return convertToApplicationResponse(savedApplication);
+    }
+
+    /**
+     * Create a new application for an authenticated candidate
+     */
+    public ApplicationResponse applyAsCandidate(Long jobId, String coverLetter, User currentUser) {
+        log.info("Creating new application for job ID: {} from authenticated user: {}",
+                jobId, currentUser.getEmail());
+
+        // Verify job exists and is active
+        Job job = jobRepository.findById(jobId)
+                .orElseThrow(() -> new ResourceNotFoundException("Job not found with ID: " + jobId));
+
+        if (!job.getIsActive()) {
+            throw new UnauthorizedAccessException("Job is not active for applications");
+        }
+
+        // Check if user has already applied
+        if (applicationRepository.existsByJobAndCandidate(job, currentUser)) {
+            throw new DuplicateApplicationException("You have already applied to this job");
+        }
+
+        // Validate Candidate Profile (Ensure they have a resume)
+        if (currentUser.getPrimaryResume() == null) {
+            throw new IncompleteProfileException("Please upload a resume to your profile before applying.");
+        }
+
+        // Create Application using Profile Data
+        Application application = Application.builder()
+                .job(job)
+                .candidate(currentUser) // Link to user
+                .applicantName(currentUser.getName())
+                .applicantEmail(currentUser.getEmail())
+                .applicantPhone(currentUser.getPhone())
+                .resumeUrl(currentUser.getPrimaryResume().getFileUrl())
+                .coverLetter(coverLetter)
+                .status(ApplicationStatus.PENDING)
+                .build();
+
+        Application savedApplication = applicationRepository.save(application);
+        log.info("Application created successfully with ID: {} for user: {}",
+                savedApplication.getId(), currentUser.getEmail());
+
+        return convertToApplicationResponse(savedApplication);
+    }
+
+    /**
+     * Create a new application for an authenticated candidate with custom resume
+     */
+    public ApplicationResponse applyAsCandidateWithCustomResume(StreamlinedApplicationRequest request, User currentUser) {
+        log.info("Creating new application for job ID: {} from authenticated user: {} with custom resume",
+                request.getJobId(), currentUser.getEmail());
+
+        // Verify job exists and is active
+        Job job = jobRepository.findById(request.getJobId())
+                .orElseThrow(() -> new ResourceNotFoundException("Job not found with ID: " + request.getJobId()));
+
+        if (!job.getIsActive()) {
+            throw new UnauthorizedAccessException("Job is not active for applications");
+        }
+
+        // Check if user has already applied
+        if (applicationRepository.existsByJobAndCandidate(job, currentUser)) {
+            throw new DuplicateApplicationException("You have already applied to this job");
+        }
+
+        // Validate Candidate Profile (Ensure they have a resume either in profile or custom)
+        String resumeUrl;
+        if (request.getCustomResumeUrl() != null && !request.getCustomResumeUrl().isEmpty()) {
+            resumeUrl = request.getCustomResumeUrl();
+        } else if (currentUser.getPrimaryResume() != null) {
+            resumeUrl = currentUser.getPrimaryResume().getFileUrl();
+        } else {
+            throw new IncompleteProfileException("Please upload a resume to your profile or provide a custom resume.");
+        }
+
+        // Create Application using Profile Data
+        Application application = Application.builder()
+                .job(job)
+                .candidate(currentUser) // Link to user
+                .applicantName(currentUser.getName())
+                .applicantEmail(currentUser.getEmail())
+                .applicantPhone(currentUser.getPhone())
+                .resumeUrl(resumeUrl)
+                .coverLetter(request.getCoverLetter())
+                .status(ApplicationStatus.PENDING)
+                .build();
+
+        Application savedApplication = applicationRepository.save(application);
+        log.info("Application created successfully with ID: {} for user: {}",
+                savedApplication.getId(), currentUser.getEmail());
 
         return convertToApplicationResponse(savedApplication);
     }

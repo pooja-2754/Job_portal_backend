@@ -2,25 +2,30 @@ package com.pooja.jobportal.service;
 
 import com.cloudinary.Cloudinary;
 import com.cloudinary.utils.ObjectUtils;
+import com.pooja.jobportal.dto.ResumeResponse;
 import com.pooja.jobportal.model.Resume;
 import com.pooja.jobportal.model.User;
 import com.pooja.jobportal.repository.ResumeRepository;
+import com.pooja.jobportal.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 public class CloudinaryService {
 
     private final Cloudinary cloudinary;
     private final ResumeRepository resumeRepository;
+    private final UserRepository userRepository;
 
-    public CloudinaryService(Cloudinary cloudinary, ResumeRepository resumeRepository) {
+    public CloudinaryService(Cloudinary cloudinary, ResumeRepository resumeRepository, UserRepository userRepository) {
         this.cloudinary = cloudinary;
         this.resumeRepository = resumeRepository;
+        this.userRepository = userRepository;
     }
 
     public Resume uploadResume(MultipartFile file, User user) throws IOException {
@@ -63,7 +68,52 @@ public class CloudinaryService {
                 .orElseThrow(() -> new RuntimeException("Resume not found or access denied"));
     }
     
-    public List<Resume> getUserResumes(User user) {
-        return resumeRepository.findByUser(user);
+    public List<ResumeResponse> getUserResumesWithPrimaryStatus(User user) {
+        List<Resume> resumes = resumeRepository.findByUser(user);
+        Long primaryResumeId = user.getPrimaryResume() != null ? user.getPrimaryResume().getId() : null;
+        
+        return resumes.stream()
+                .map(resume -> ResumeResponse.builder()
+                        .id(resume.getId())
+                        .name(resume.getName())
+                        .fileUrl(resume.getFileUrl())
+                        .previewUrl(resume.getPreviewUrl())
+                        .cloudinaryId(resume.getCloudinaryId())
+                        .createdAt(resume.getCreatedAt())
+                        .isPrimary(resume.getId().equals(primaryResumeId))
+                        .build())
+                .collect(Collectors.toList());
+    }
+    
+    /**
+     * Set a resume as the primary resume for a user
+     */
+    public Resume setPrimaryResume(Long resumeId, User user) {
+        Resume resume = resumeRepository.findByUserAndId(user, resumeId)
+                .orElseThrow(() -> new RuntimeException("Resume not found or access denied"));
+        
+        // Update user's primary resume
+        user.setPrimaryResume(resume);
+        userRepository.save(user);
+        
+        return resume;
+    }
+    
+    public ResumeResponse getResumeWithPrimaryStatus(Long id, User user) {
+        Resume resume = resumeRepository.findByUserAndId(user, id)
+                .orElseThrow(() -> new RuntimeException("Resume not found or access denied"));
+        
+        boolean isPrimary = user.getPrimaryResume() != null &&
+                user.getPrimaryResume().getId().equals(resume.getId());
+        
+        return ResumeResponse.builder()
+                .id(resume.getId())
+                .name(resume.getName())
+                .fileUrl(resume.getFileUrl())
+                .previewUrl(resume.getPreviewUrl())
+                .cloudinaryId(resume.getCloudinaryId())
+                .createdAt(resume.getCreatedAt())
+                .isPrimary(isPrimary)
+                .build();
     }
 }

@@ -32,6 +32,12 @@ public class User {
     private Role role = Role.JOB_SEEKER;
 
     private String skills;
+    
+    private String phone;
+    
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "primary_resume_id")
+    private Resume primaryResume;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)

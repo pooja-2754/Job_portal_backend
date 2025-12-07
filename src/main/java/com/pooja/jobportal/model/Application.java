@@ -26,6 +26,12 @@ public class Application {
     @ToString.Exclude
     private Job job;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "candidate_id")
+    @JsonIgnore
+    @ToString.Exclude
+    private User candidate;
+
     @Column(nullable = false)
     private String applicantName;
 

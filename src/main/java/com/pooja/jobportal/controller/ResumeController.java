@@ -1,5 +1,6 @@
 package com.pooja.jobportal.controller;
 
+import com.pooja.jobportal.dto.ResumeResponse;
 import com.pooja.jobportal.model.Resume;
 import com.pooja.jobportal.model.User;
 import com.pooja.jobportal.security.UserPrincipal;
@@ -58,11 +59,12 @@ public class ResumeController {
         @ApiResponse(responseCode = "403", description = "Forbidden - Can only access own resumes"),
         @ApiResponse(responseCode = "404", description = "Resume not found")
     })
-    public ResponseEntity<Resume> getResume(
+    public ResponseEntity<ResumeResponse> getResume(
             @PathVariable Long id,
             @AuthenticationPrincipal UserPrincipal userPrincipal) {
         User user = userPrincipal.getUser();
-        return ResponseEntity.ok(cloudinaryService.getResume(id, user));
+        ResumeResponse resume = cloudinaryService.getResumeWithPrimaryStatus(id, user);
+        return ResponseEntity.ok(resume);
     }
 
     // Route 3: Get All User Resumes
@@ -74,9 +76,28 @@ public class ResumeController {
         @ApiResponse(responseCode = "401", description = "Unauthorized"),
         @ApiResponse(responseCode = "403", description = "Forbidden - Only job seekers can access their resumes")
     })
-    public ResponseEntity<List<Resume>> getUserResumes(@AuthenticationPrincipal UserPrincipal userPrincipal) {
+    public ResponseEntity<List<ResumeResponse>> getUserResumes(@AuthenticationPrincipal UserPrincipal userPrincipal) {
         User user = userPrincipal.getUser();
-        List<Resume> resumes = cloudinaryService.getUserResumes(user);
+        List<ResumeResponse> resumes = cloudinaryService.getUserResumesWithPrimaryStatus(user);
         return ResponseEntity.ok(resumes);
+    }
+
+    // Route 4: Set Primary Resume
+    @PostMapping("/{id}/set-primary")
+    @PreAuthorize("hasRole('JOB_SEEKER') or hasRole('ADMIN')")
+    @Operation(summary = "Set a resume as primary", description = "Mark a specific resume as the user's primary resume for job applications")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Primary resume set successfully"),
+        @ApiResponse(responseCode = "401", description = "Unauthorized"),
+        @ApiResponse(responseCode = "403", description = "Forbidden - Can only set own resumes as primary"),
+        @ApiResponse(responseCode = "404", description = "Resume not found")
+    })
+    public ResponseEntity<ResumeResponse> setPrimaryResume(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserPrincipal userPrincipal) {
+        User user = userPrincipal.getUser();
+        Resume resume = cloudinaryService.setPrimaryResume(id, user);
+        ResumeResponse resumeResponse = cloudinaryService.getResumeWithPrimaryStatus(id, user);
+        return ResponseEntity.ok(resumeResponse);
     }
 }

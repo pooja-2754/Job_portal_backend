@@ -118,6 +118,36 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
     }
 
+    @ExceptionHandler(IncompleteProfileException.class)
+    public ResponseEntity<ErrorResponse> handleIncompleteProfileException(
+            IncompleteProfileException ex, WebRequest request) {
+        
+        ErrorResponse errorResponse = new ErrorResponse(
+                LocalDateTime.now(),
+                HttpStatus.BAD_REQUEST.value(),
+                "Profile Incomplete",
+                ex.getMessage(),
+                request.getDescription(false)
+        );
+        
+        return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(DuplicateApplicationException.class)
+    public ResponseEntity<ErrorResponse> handleDuplicateApplicationException(
+            DuplicateApplicationException ex, WebRequest request) {
+        
+        ErrorResponse errorResponse = new ErrorResponse(
+                LocalDateTime.now(),
+                HttpStatus.CONFLICT.value(),
+                "Duplicate Application",
+                ex.getMessage(),
+                request.getDescription(false)
+        );
+        
+        return new ResponseEntity<>(errorResponse, HttpStatus.CONFLICT);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGlobalException(
             Exception ex, WebRequest request) {
