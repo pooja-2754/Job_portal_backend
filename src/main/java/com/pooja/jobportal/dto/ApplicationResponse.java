@@ -38,6 +38,9 @@ public class ApplicationResponse {
     @Schema(description = "URL to the applicant's resume", example = "https://example.com/resume.pdf")
     private String resumeUrl;
     
+    @Schema(description = "Preview URL for the applicant's resume", example = "https://example.com/resume.jpg")
+    private String resumePreviewUrl;
+    
     @Schema(description = "Cover letter from the applicant")
     private String coverLetter;
     

@@ -226,4 +226,10 @@ public interface ApplicationRepository extends JpaRepository<Application, Long> 
     Page<Application> searchApplicationsByCompany(@Param("company") Company company,
                                                @Param("keyword") String keyword,
                                                Pageable pageable);
+    
+    /**
+     * Find all applications by a specific candidate
+     */
+    @Query("SELECT a FROM Application a WHERE a.candidate = :candidate")
+    Page<Application> findByCandidate(@Param("candidate") User candidate, Pageable pageable);
 }

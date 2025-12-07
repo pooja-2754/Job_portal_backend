@@ -430,4 +430,32 @@ public class ApplicationController {
         var applications = applicationService.getOldPendingApplications(company, daysThreshold);
         return ResponseEntity.ok(applications);
     }
+
+    @Operation(summary = "Get my applications", description = "Retrieves all applications submitted by the authenticated job seeker")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Applications retrieved successfully"),
+        @ApiResponse(responseCode = "401", description = "Unauthorized"),
+        @ApiResponse(responseCode = "403", description = "Forbidden - Only job seekers can access their applications")
+    })
+    @GetMapping("/candidate/my-applications")
+    @PreAuthorize("hasRole('JOB_SEEKER')")
+    public ResponseEntity<Page<ApplicationResponse>> getMyApplications(
+            @Parameter(description = "Page number (0-based)", example = "0")
+            @RequestParam(defaultValue = "0") int page,
+            @Parameter(description = "Page size", example = "10")
+            @RequestParam(defaultValue = "10") int size,
+            @Parameter(description = "Sort field", example = "appliedDate")
+            @RequestParam(defaultValue = "appliedDate") String sortBy,
+            @Parameter(description = "Sort direction", example = "desc")
+            @RequestParam(defaultValue = "desc") String sortDir,
+            @AuthenticationPrincipal UserPrincipal userPrincipal) {
+        
+        User user = userPrincipal.getUser();
+        Sort.Direction direction = sortDir.equalsIgnoreCase("desc") ?
+                Sort.Direction.DESC : Sort.Direction.ASC;
+        Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortBy));
+        
+        Page<ApplicationResponse> applications = applicationService.getApplicationsForCandidate(user, pageable);
+        return ResponseEntity.ok(applications);
+    }
 }

@@ -402,12 +402,35 @@ public class ApplicationService {
     }
 
     /**
+     * Get all applications for a specific candidate
+     */
+    @Transactional(readOnly = true)
+    public Page<ApplicationResponse> getApplicationsForCandidate(User candidate, Pageable pageable) {
+        log.debug("Fetching applications for candidate: {}", candidate.getEmail());
+
+        Page<Application> applications = applicationRepository.findByCandidate(candidate, pageable);
+        List<ApplicationResponse> applicationResponses = applications.getContent().stream()
+                .map(this::convertToApplicationResponse)
+                .collect(Collectors.toList());
+
+        return new PageImpl<>(applicationResponses, pageable, applications.getTotalElements());
+    }
+
+    /**
      * Convert Application entity to ApplicationResponse DTO
      */
     private ApplicationResponse convertToApplicationResponse(Application application) {
         String companyName = null;
         if (application.getJob().getCompany() != null) {
             companyName = application.getJob().getCompany().getName();
+        }
+        
+        String resumeUrl = application.getResumeUrl();
+        String resumePreviewUrl = null;
+        
+        // Try to get preview URL from candidate's primary resume if available
+        if (application.getCandidate() != null && application.getCandidate().getPrimaryResume() != null) {
+            resumePreviewUrl = application.getCandidate().getPrimaryResume().getPreviewUrl();
         }
         
         return ApplicationResponse.builder()
@@ -418,7 +441,8 @@ public class ApplicationService {
                 .applicantName(application.getApplicantName())
                 .applicantEmail(application.getApplicantEmail())
                 .applicantPhone(application.getApplicantPhone())
-                .resumeUrl(application.getResumeUrl())
+                .resumeUrl(resumeUrl)
+                .resumePreviewUrl(resumePreviewUrl)
                 .coverLetter(application.getCoverLetter())
                 .experience(application.getExperience())
                 .education(application.getEducation())
