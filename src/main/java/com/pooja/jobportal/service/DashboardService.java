@@ -4,12 +4,10 @@ import com.pooja.jobportal.dto.ApplicationResponse;
 import com.pooja.jobportal.dto.DashboardStatsResponse;
 import com.pooja.jobportal.model.ApplicationStatus;
 import com.pooja.jobportal.model.Company;
-import com.pooja.jobportal.model.CompanyVerificationStatus;
 import com.pooja.jobportal.model.Job;
 import com.pooja.jobportal.model.Role;
 import com.pooja.jobportal.model.User;
 import com.pooja.jobportal.repository.ApplicationRepository;
-import com.pooja.jobportal.repository.CompanyRepository;
 import com.pooja.jobportal.repository.JobRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -32,7 +30,6 @@ public class DashboardService {
     private final JobRepository jobRepository;
     private final ApplicationRepository applicationRepository;
     private final ApplicationService applicationService;
-    private final CompanyRepository companyRepository;
 
     /**
      * Get comprehensive dashboard statistics for a company
@@ -160,6 +157,40 @@ public class DashboardService {
     }
 
     /**
+     * Get application status distribution as a map for a candidate
+     */
+    private Map<String, Long> getApplicationStatusDistributionForCandidate(User candidate) {
+        List<Object[]> results = applicationRepository.getApplicationStatusDistributionByCandidate(candidate);
+        Map<String, Long> distribution = new HashMap<>();
+
+        // Initialize all statuses with 0
+        for (ApplicationStatus status : ApplicationStatus.values()) {
+            distribution.put(status.getDisplayName(), 0L);
+        }
+
+        // Update with actual counts
+        for (Object[] result : results) {
+            ApplicationStatus status = (ApplicationStatus) result[0];
+            Long count = (Long) result[1];
+            distribution.put(status.getDisplayName(), count);
+        }
+
+        return distribution;
+    }
+
+    /**
+     * Get recent applications (last 5) for a candidate
+     */
+    private List<ApplicationResponse> getRecentApplicationsForCandidate(User candidate) {
+        // Using a small page size to get just the most recent 5
+        org.springframework.data.domain.Pageable pageable =
+                org.springframework.data.domain.PageRequest.of(0, 5,
+                        org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "appliedDate"));
+        
+        return applicationService.getRecentApplicationsForCandidate(candidate, pageable).getContent();
+    }
+
+    /**
      * Get comprehensive dashboard statistics for an admin
      */
     public DashboardStatsResponse getAdminDashboardStats(User admin) {
@@ -193,15 +224,34 @@ public class DashboardService {
         
         log.debug("Generating job seeker dashboard statistics for: {}", jobSeeker.getEmail());
 
-        // Job seeker statistics - simplified to use existing methods
-        // For now, return basic stats since application-specific methods for applicants don't exist
+        // Application statistics for the job seeker
+        long totalApplications = applicationRepository.countByCandidate(jobSeeker);
+        long pendingApplications = applicationRepository.countByCandidateAndStatus(jobSeeker, ApplicationStatus.PENDING);
+        long underReviewApplications = applicationRepository.countByCandidateAndStatus(jobSeeker, ApplicationStatus.UNDER_REVIEW);
+        long shortlistedApplications = applicationRepository.countByCandidateAndStatus(jobSeeker, ApplicationStatus.SHORTLISTED);
+        long rejectedApplications = applicationRepository.countByCandidateAndStatus(jobSeeker, ApplicationStatus.REJECTED);
+        long acceptedApplications = applicationRepository.countByCandidateAndStatus(jobSeeker, ApplicationStatus.ACCEPTED);
+
+        // Application status distribution
+        Map<String, Long> applicationStatusDistribution = getApplicationStatusDistributionForCandidate(jobSeeker);
+
+        // Recent applications
+        List<ApplicationResponse> recentApplications = getRecentApplicationsForCandidate(jobSeeker);
+
+        // Job market statistics (system-wide)
+        long totalActiveJobs = jobRepository.countByIsActiveTrue();
+
         return DashboardStatsResponse.builder()
-                .totalApplications(0L) // Placeholder
-                .pendingApplications(0L) // Placeholder
-                .underReviewApplications(0L) // Placeholder
-                .shortlistedApplications(0L) // Placeholder
-                .rejectedApplications(0L) // Placeholder
-                .acceptedApplications(0L) // Placeholder
+                .totalApplications(totalApplications)
+                .pendingApplications(pendingApplications)
+                .underReviewApplications(underReviewApplications)
+                .shortlistedApplications(shortlistedApplications)
+                .rejectedApplications(rejectedApplications)
+                .acceptedApplications(acceptedApplications)
+                .applicationStatusDistribution(applicationStatusDistribution)
+                .recentApplications(recentApplications)
+                .activeJobs(totalActiveJobs) // Using activeJobs field to show total active jobs in system
+                .totalJobs(totalActiveJobs) // Using totalJobs field to show total active jobs in system
                 .build();
     }
 

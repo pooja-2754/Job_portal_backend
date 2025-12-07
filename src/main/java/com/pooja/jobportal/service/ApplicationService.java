@@ -415,6 +415,21 @@ public class ApplicationService {
 
         return new PageImpl<>(applicationResponses, pageable, applications.getTotalElements());
     }
+    
+    /**
+     * Get recent applications for a candidate
+     */
+    @Transactional(readOnly = true)
+    public Page<ApplicationResponse> getRecentApplicationsForCandidate(User candidate, Pageable pageable) {
+        log.debug("Fetching recent applications for candidate: {}", candidate.getEmail());
+
+        Page<Application> applications = applicationRepository.findRecentApplicationsByCandidate(candidate, pageable);
+        List<ApplicationResponse> applicationResponses = applications.getContent().stream()
+                .map(this::convertToApplicationResponse)
+                .collect(Collectors.toList());
+
+        return new PageImpl<>(applicationResponses, pageable, applications.getTotalElements());
+    }
 
     /**
      * Convert Application entity to ApplicationResponse DTO

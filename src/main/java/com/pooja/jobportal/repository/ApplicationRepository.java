@@ -232,4 +232,30 @@ public interface ApplicationRepository extends JpaRepository<Application, Long> 
      */
     @Query("SELECT a FROM Application a WHERE a.candidate = :candidate")
     Page<Application> findByCandidate(@Param("candidate") User candidate, Pageable pageable);
+    
+    // Candidate-specific methods for job seeker dashboard
+    
+    /**
+     * Count total applications for a specific candidate
+     */
+    @Query("SELECT COUNT(a) FROM Application a WHERE a.candidate = :candidate")
+    long countByCandidate(@Param("candidate") User candidate);
+    
+    /**
+     * Count applications by status for a specific candidate
+     */
+    @Query("SELECT COUNT(a) FROM Application a WHERE a.candidate = :candidate AND a.status = :status")
+    long countByCandidateAndStatus(@Param("candidate") User candidate, @Param("status") ApplicationStatus status);
+    
+    /**
+     * Get application status distribution for a candidate
+     */
+    @Query("SELECT a.status, COUNT(a) FROM Application a WHERE a.candidate = :candidate GROUP BY a.status")
+    List<Object[]> getApplicationStatusDistributionByCandidate(@Param("candidate") User candidate);
+    
+    /**
+     * Find recent applications for a candidate
+     */
+    @Query("SELECT a FROM Application a WHERE a.candidate = :candidate ORDER BY a.appliedDate DESC")
+    Page<Application> findRecentApplicationsByCandidate(@Param("candidate") User candidate, Pageable pageable);
 }
