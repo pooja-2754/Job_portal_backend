@@ -221,4 +221,8 @@ public interface JobRepository extends JpaRepository<Job, Long> {
     List<Job> findJobsWithApproachingDeadline(@Param("company") Company company,
                                               @Param("currentDate") LocalDate currentDate,
                                               @Param("weekFromNow") LocalDate weekFromNow);
+
+    Page<Job> findByCompanyIdAndIsActiveTrue(Long companyId, Pageable pageable);
+
+    long countByCompanyIdAndIsActiveTrue(Long companyId);
 }

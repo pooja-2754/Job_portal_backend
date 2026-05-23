@@ -7,7 +7,6 @@ import com.pooja.jobportal.exception.ResourceNotFoundException;
 import com.pooja.jobportal.exception.UnauthorizedAccessException;
 import com.pooja.jobportal.model.*;
 import com.pooja.jobportal.repository.ApplicationRepository;
-import com.pooja.jobportal.repository.CompanyRepository;
 import com.pooja.jobportal.repository.JobRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -33,8 +32,6 @@ public class JobService {
 
     private final JobRepository jobRepository;
     private final ApplicationRepository applicationRepository;
-    private final CompanyRepository companyRepository;
-    private final AuditLogService auditLogService;
 
     /**
      * Create a new job for the company
@@ -412,6 +409,15 @@ public class JobService {
         return convertToPublicJobResponse(job);
     }
 
+    @Transactional(readOnly = true)
+    public Page<PublicJobResponse> getActiveJobsByCompanyId(Long companyId, Pageable pageable) {
+        Page<Job> jobs = jobRepository.findByCompanyIdAndIsActiveTrue(companyId, pageable);
+        List<PublicJobResponse> responses = jobs.getContent().stream()
+                .map(this::convertToPublicJobResponse)
+                .collect(Collectors.toList());
+        return new PageImpl<>(responses, pageable, jobs.getTotalElements());
+    }
+
     /**
      * Convert Job entity to PublicJobResponse DTO
      */
@@ -444,12 +450,6 @@ public class JobService {
     }
 
     // Helper methods for conversion and sanitization
-
-    private Company handleCompany(JobRequest jobRequest, Company company) {
-        // For company-based job creation, we use the authenticated company directly
-        // No need for validation since the company is already authenticated
-        return company;
-    }
 
     private Location convertToLocation(JobRequest.LocationRequest locationRequest) {
         if (locationRequest == null) return null;
@@ -547,111 +547,4 @@ public class JobService {
         return Jsoup.clean(html, Safelist.basic());
     }
 
-    // User-based methods for backward compatibility
-    
-    /**
-     * Create a new job for the user (recruiter)
-     */
-    public JobResponse createJob(JobRequest jobRequest, User user) {
-        // For now, we need to handle the User to Company conversion
-        // This is a placeholder implementation
-        throw new UnsupportedOperationException("User-based job creation is not supported. Please use Company-based methods.");
-    }
-
-    /**
-     * Get all jobs for a user (admin) with pagination
-     */
-    @Transactional(readOnly = true)
-    public Page<JobResponse> getJobsForAdmin(User user, Pageable pageable) {
-        // For now, return all jobs for admin
-        Page<Job> jobs = jobRepository.findAll(pageable);
-        List<JobResponse> jobResponses = jobs.getContent().stream()
-                .map(this::convertToJobResponse)
-                .collect(Collectors.toList());
-
-        return new PageImpl<>(jobResponses, pageable, jobs.getTotalElements());
-    }
-
-    /**
-     * Get active jobs for a user (admin) with pagination
-     */
-    @Transactional(readOnly = true)
-    public Page<JobResponse> getActiveJobsForAdmin(User user, Pageable pageable) {
-        // For now, return all active jobs for admin
-        Page<Job> jobs = jobRepository.findByIsActiveTrue(pageable);
-        List<JobResponse> jobResponses = jobs.getContent().stream()
-                .map(this::convertToJobResponse)
-                .collect(Collectors.toList());
-
-        return new PageImpl<>(jobResponses, pageable, jobs.getTotalElements());
-    }
-
-    /**
-     * Get a specific job by ID (only if it belongs to the user)
-     */
-    @Transactional(readOnly = true)
-    public JobResponse getJobById(Long jobId, User user) {
-        // For now, we need to handle the User to Company conversion
-        throw new UnsupportedOperationException("User-based job retrieval is not supported. Please use Company-based methods.");
-    }
-
-    /**
-     * Update an existing job
-     */
-    public JobResponse updateJob(Long jobId, JobRequest jobRequest, User user) {
-        // For now, we need to handle the User to Company conversion
-        throw new UnsupportedOperationException("User-based job update is not supported. Please use Company-based methods.");
-    }
-
-    /**
-     * Delete a job
-     */
-    public void deleteJob(Long jobId, User user) {
-        // For now, we need to handle the User to Company conversion
-        throw new UnsupportedOperationException("User-based job deletion is not supported. Please use Company-based methods.");
-    }
-
-    /**
-     * Search jobs by keyword for a user
-     */
-    @Transactional(readOnly = true)
-    public Page<JobResponse> searchJobs(String keyword, User user, Pageable pageable) {
-        // For now, return all active jobs matching the keyword
-        Page<Job> jobs = jobRepository.findActiveJobsByKeyword(keyword, pageable);
-        List<JobResponse> jobResponses = jobs.getContent().stream()
-                .map(this::convertToJobResponse)
-                .collect(Collectors.toList());
-
-        return new PageImpl<>(jobResponses, pageable, jobs.getTotalElements());
-    }
-
-    /**
-     * Get jobs by type for a user
-     */
-    @Transactional(readOnly = true)
-    public Page<JobResponse> getJobsByType(JobType jobType, User user, Pageable pageable) {
-        // For now, return all active jobs of the specified type
-        Page<Job> jobs = jobRepository.findByIsActiveTrueAndType(jobType, pageable);
-        List<JobResponse> jobResponses = jobs.getContent().stream()
-                .map(this::convertToJobResponse)
-                .collect(Collectors.toList());
-
-        return new PageImpl<>(jobResponses, pageable, jobs.getTotalElements());
-    }
-
-    /**
-     * Get jobs with approaching deadlines (within 7 days) for a user
-     */
-    @Transactional(readOnly = true)
-    public List<JobResponse> getJobsWithApproachingDeadlines(User user) {
-        // For now, return all jobs with approaching deadlines
-        LocalDate currentDate = LocalDate.now();
-        LocalDate weekFromNow = currentDate.plusDays(7);
-
-        // Use the admin-based method to get jobs with approaching deadlines
-        List<Job> jobs = jobRepository.findJobsWithApproachingDeadline(user, currentDate, weekFromNow);
-        return jobs.stream()
-                .map(this::convertToJobResponse)
-                .collect(Collectors.toList());
-    }
 }

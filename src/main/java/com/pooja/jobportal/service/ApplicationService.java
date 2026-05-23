@@ -169,113 +169,7 @@ public class ApplicationService {
         return convertToApplicationResponse(savedApplication);
     }
 
-    /**
-     * Get all applications for jobs posted by a recruiter
-     */
-    @Transactional(readOnly = true)
-    public Page<ApplicationResponse> getApplicationsForRecruiter(User recruiter, Pageable pageable) {
-        log.debug("Fetching applications for recruiter: {}", recruiter.getEmail());
-
-        Page<Application> applications = applicationRepository.findByRecruiter(recruiter, pageable);
-        List<ApplicationResponse> applicationResponses = applications.getContent().stream()
-                .map(this::convertToApplicationResponse)
-                .collect(Collectors.toList());
-
-        return new PageImpl<>(applicationResponses, pageable, applications.getTotalElements());
-    }
-
-    /**
-     * Get applications for a specific job (only if job belongs to the recruiter)
-     */
-    @Transactional(readOnly = true)
-    public Page<ApplicationResponse> getApplicationsByJob(Long jobId, User recruiter, Pageable pageable) {
-        log.debug("Fetching applications for job ID: {} for recruiter: {}", jobId, recruiter.getEmail());
-
-        Page<Application> applications = applicationRepository.findByJobIdAndRecruiter(jobId, recruiter, pageable);
-        List<ApplicationResponse> applicationResponses = applications.getContent().stream()
-                .map(this::convertToApplicationResponse)
-                .collect(Collectors.toList());
-
-        return new PageImpl<>(applicationResponses, pageable, applications.getTotalElements());
-    }
-
-    /**
-     * Get applications by status for jobs posted by a recruiter
-     */
-    @Transactional(readOnly = true)
-    public Page<ApplicationResponse> getApplicationsByStatus(ApplicationStatus status, User recruiter, Pageable pageable) {
-        log.debug("Fetching applications with status: {} for recruiter: {}", status, recruiter.getEmail());
-
-        Page<Application> applications = applicationRepository.findByRecruiterAndStatus(recruiter, status, pageable);
-        List<ApplicationResponse> applicationResponses = applications.getContent().stream()
-                .map(this::convertToApplicationResponse)
-                .collect(Collectors.toList());
-
-        return new PageImpl<>(applicationResponses, pageable, applications.getTotalElements());
-    }
-
-    /**
-     * Get a specific application by ID (only if job belongs to the recruiter)
-     */
-    @Transactional(readOnly = true)
-    public ApplicationResponse getApplicationById(Long applicationId, User recruiter) {
-        log.debug("Fetching application with ID: {} for recruiter: {}", applicationId, recruiter.getEmail());
-
-        Application application = applicationRepository.findByIdAndRecruiter(applicationId, recruiter)
-                .orElseThrow(() -> new ResourceNotFoundException("Application not found with ID: " + applicationId));
-
-        return convertToApplicationResponse(application);
-    }
-
-    /**
-     * Update application status
-     */
-    public ApplicationResponse updateApplicationStatus(Long applicationId, ApplicationStatusUpdateRequest statusUpdateRequest, User recruiter) {
-        log.info("Updating status for application ID: {} to: {} for recruiter: {}", 
-                applicationId, statusUpdateRequest.getStatus(), recruiter.getEmail());
-
-        Application application = applicationRepository.findByIdAndRecruiter(applicationId, recruiter)
-                .orElseThrow(() -> new ResourceNotFoundException("Application not found with ID: " + applicationId));
-
-        application.setStatus(statusUpdateRequest.getStatus());
-        Application updatedApplication = applicationRepository.save(application);
-
-        log.info("Application status updated successfully for ID: {}", updatedApplication.getId());
-
-        return convertToApplicationResponse(updatedApplication);
-    }
-
-    /**
-     * Search applications by keyword for a recruiter
-     */
-    @Transactional(readOnly = true)
-    public Page<ApplicationResponse> searchApplications(String keyword, User recruiter, Pageable pageable) {
-        log.debug("Searching applications with keyword: {} for recruiter: {}", keyword, recruiter.getEmail());
-
-        Page<Application> applications = applicationRepository.searchApplicationsByRecruiter(recruiter, keyword, pageable);
-        List<ApplicationResponse> applicationResponses = applications.getContent().stream()
-                .map(this::convertToApplicationResponse)
-                .collect(Collectors.toList());
-
-        return new PageImpl<>(applicationResponses, pageable, applications.getTotalElements());
-    }
-
-    /**
-     * Get recent applications for a recruiter
-     */
-    @Transactional(readOnly = true)
-    public Page<ApplicationResponse> getRecentApplications(User recruiter, Pageable pageable) {
-        log.debug("Fetching recent applications for recruiter: {}", recruiter.getEmail());
-
-        Page<Application> applications = applicationRepository.findRecentApplicationsByRecruiter(recruiter, pageable);
-        List<ApplicationResponse> applicationResponses = applications.getContent().stream()
-                .map(this::convertToApplicationResponse)
-                .collect(Collectors.toList());
-
-        return new PageImpl<>(applicationResponses, pageable, applications.getTotalElements());
-    }
-
-    // Company-based methods (replacing recruiter-based methods)
+    // Company-based application management methods
     
     /**
      * Get all applications for jobs posted by a company
@@ -396,6 +290,15 @@ public class ApplicationService {
                 .collect(Collectors.toList());
 
         return new PageImpl<>(applicationResponses, pageable, applications.getTotalElements());
+    }
+
+    @Transactional(readOnly = true)
+    public Page<ApplicationResponse> getAllApplications(Pageable pageable) {
+        Page<Application> applications = applicationRepository.findAll(pageable);
+        List<ApplicationResponse> responses = applications.getContent().stream()
+                .map(this::convertToApplicationResponse)
+                .collect(Collectors.toList());
+        return new PageImpl<>(responses, pageable, applications.getTotalElements());
     }
 
     /**

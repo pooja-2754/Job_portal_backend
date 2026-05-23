@@ -1,6 +1,7 @@
 package com.pooja.jobportal.repository;
 
 import com.pooja.jobportal.model.Company;
+import com.pooja.jobportal.model.CompanyVerificationStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -28,4 +29,8 @@ public interface CompanyRepository extends JpaRepository<Company, Long> {
            "LOWER(c.industry) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
            "LOWER(c.description) LIKE LOWER(CONCAT('%', :keyword, '%'))")
     Page<Company> searchCompanies(@Param("keyword") String keyword, Pageable pageable);
+
+    long countByVerificationStatus(CompanyVerificationStatus status);
+
+    Page<Company> findByVerificationStatus(CompanyVerificationStatus status, Pageable pageable);
 }

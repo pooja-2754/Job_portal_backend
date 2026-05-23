@@ -3,6 +3,8 @@ package com.pooja.jobportal.service;
 import com.pooja.jobportal.model.User;
 import com.pooja.jobportal.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
@@ -41,5 +43,13 @@ public class UserService {
     // Delete user
     public void deleteUser(Long id) {
         userRepository.deleteById(id);
+    }
+
+    public Page<User> getAllUsers(Pageable pageable) {
+        return userRepository.findAll(pageable);
+    }
+
+    public long countUsers() {
+        return userRepository.count();
     }
 }

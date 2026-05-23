@@ -30,7 +30,6 @@ public class CompanyService {
 
     private final CompanyRepository companyRepository;
     private final JobRepository jobRepository;
-    private final AuditLogService auditLogService;
 
     /**
      * Create a new company
@@ -200,9 +199,6 @@ public class CompanyService {
 
         Company verifiedCompany = companyRepository.save(company);
         log.info("Company verified successfully with ID: {}", verifiedCompany.getId());
-        
-        // Audit logging for admin action
-        auditLogService.logCompanyApproval(user, companyId);
 
         return convertToCompanyResponse(verifiedCompany);
     }
@@ -226,9 +222,6 @@ public class CompanyService {
 
         Company rejectedCompany = companyRepository.save(company);
         log.info("Company verification rejected successfully with ID: {}", rejectedCompany.getId());
-        
-        // Audit logging for admin action
-        auditLogService.logCompanyRejection(user, companyId, "Company verification rejected by admin");
 
         return convertToCompanyResponse(rejectedCompany);
     }
