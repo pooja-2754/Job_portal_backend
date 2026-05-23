@@ -1,7 +1,6 @@
 package com.pooja.jobportal.controller;
 
 import com.pooja.jobportal.dto.DashboardStatsResponse;
-import com.pooja.jobportal.model.Role;
 import com.pooja.jobportal.model.User;
 import com.pooja.jobportal.security.UserPrincipal;
 import com.pooja.jobportal.service.DashboardService;

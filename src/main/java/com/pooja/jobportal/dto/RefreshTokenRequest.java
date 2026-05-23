@@ -6,6 +6,6 @@ import lombok.Data;
 @Data
 @Schema(description = "Request object for token refresh")
 public class RefreshTokenRequest {
-    @Schema(description = "Current JWT token that needs to be refreshed", example = "eyJhbGciOiJIUzI1NiJ9...", required = true)
+    @Schema(description = "Current JWT token that needs to be refreshed", example = "eyJhbGciOiJIUzI1NiJ9...", requiredMode = Schema.RequiredMode.REQUIRED)
     private String token;
 }

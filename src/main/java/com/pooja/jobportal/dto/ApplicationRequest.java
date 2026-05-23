@@ -11,16 +11,16 @@ import lombok.Data;
 public class ApplicationRequest {
     
     @NotNull(message = "Job ID is required")
-    @Schema(description = "ID of the job being applied for", example = "1", required = true)
+    @Schema(description = "ID of the job being applied for", example = "1", requiredMode = Schema.RequiredMode.REQUIRED)
     private Long jobId;
     
     @NotBlank(message = "Applicant name is required")
-    @Schema(description = "Full name of the applicant", example = "Jane Smith", required = true)
+    @Schema(description = "Full name of the applicant", example = "Jane Smith", requiredMode = Schema.RequiredMode.REQUIRED)
     private String applicantName;
     
     @NotBlank(message = "Applicant email is required")
     @Email(message = "Invalid email format")
-    @Schema(description = "Email address of the applicant", example = "jane.smith@email.com", required = true)
+    @Schema(description = "Email address of the applicant", example = "jane.smith@email.com", requiredMode = Schema.RequiredMode.REQUIRED)
     private String applicantEmail;
     
     @Schema(description = "Phone number of the applicant", example = "+1-555-123-4567")

@@ -12,11 +12,9 @@ import com.pooja.jobportal.model.Application;
 import com.pooja.jobportal.model.ApplicationStatus;
 import com.pooja.jobportal.model.Company;
 import com.pooja.jobportal.model.Job;
-import com.pooja.jobportal.model.Resume;
 import com.pooja.jobportal.model.User;
 import com.pooja.jobportal.repository.ApplicationRepository;
 import com.pooja.jobportal.repository.JobRepository;
-import com.pooja.jobportal.repository.ResumeRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -37,7 +35,6 @@ public class ApplicationService {
 
     private final ApplicationRepository applicationRepository;
     private final JobRepository jobRepository;
-    private final ResumeRepository resumeRepository;
 
     /**
      * Create a new application for a job

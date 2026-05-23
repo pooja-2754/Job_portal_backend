@@ -10,6 +10,6 @@ import lombok.Data;
 public class ApplicationStatusUpdateRequest {
     
     @NotNull(message = "Status is required")
-    @Schema(description = "New application status", example = "UNDER_REVIEW", required = true)
+    @Schema(description = "New application status", example = "UNDER_REVIEW", requiredMode = Schema.RequiredMode.REQUIRED)
     private ApplicationStatus status;
 }

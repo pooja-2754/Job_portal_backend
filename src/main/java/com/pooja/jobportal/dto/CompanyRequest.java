@@ -17,7 +17,7 @@ public class CompanyRequest {
 
     @NotBlank(message = "Company name is required")
     @Size(max = 255, message = "Company name must not exceed 255 characters")
-    @Schema(description = "Company name", example = "Tech Corp", required = true)
+    @Schema(description = "Company name", example = "Tech Corp", requiredMode = Schema.RequiredMode.REQUIRED)
     private String name;
 
     @Schema(description = "Company logo URL", example = "https://cdn.example.com/logos/techcorp.png")

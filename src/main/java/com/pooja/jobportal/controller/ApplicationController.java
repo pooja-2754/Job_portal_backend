@@ -244,7 +244,7 @@ public class ApplicationController {
             @RequestParam(defaultValue = "7") int daysThreshold,
             @AuthenticationPrincipal UserPrincipal userPrincipal) {
         
-        User user = userPrincipal.getUser();
+        // User user = userPrincipal.getUser();
         // Note: This method needs to be updated to work with User instead of Company
         // For now, we'll return an empty list as a placeholder
         List<?> applications = List.of(); // applicationService.getOldPendingApplications(user, daysThreshold);

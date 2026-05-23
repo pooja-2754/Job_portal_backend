@@ -9,7 +9,7 @@ import lombok.Data;
 public class StreamlinedApplicationRequest {
     
     @NotNull(message = "Job ID is required")
-    @Schema(description = "ID of the job being applied for", example = "1", required = true)
+    @Schema(description = "ID of the job being applied for", example = "1", requiredMode = Schema.RequiredMode.REQUIRED)
     private Long jobId;
     
     @Schema(description = "Cover letter from the applicant", 

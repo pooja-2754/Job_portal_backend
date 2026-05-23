@@ -17,7 +17,7 @@ public class JobRequest {
     private Long id;
     
     @NotBlank(message = "Job title is required")
-    @Schema(description = "Title of the job position", example = "Senior Java Developer", required = true)
+    @Schema(description = "Title of the job position", example = "Senior Java Developer", requiredMode = Schema.RequiredMode.REQUIRED)
     private String title;
     
     @Schema(description = "Company ID if referencing an existing company", example = "501")
@@ -42,15 +42,15 @@ public class JobRequest {
     private String companySize;
     
     @NotNull(message = "Job status is required")
-    @Schema(description = "Job publication status", example = "PUBLISHED", required = true)
+    @Schema(description = "Job publication status", example = "PUBLISHED", requiredMode = Schema.RequiredMode.REQUIRED)
     private JobStatus status = JobStatus.PUBLISHED;
     
     @NotNull(message = "Job type is required")
-    @Schema(description = "Type of employment", example = "FULL_TIME", required = true)
+    @Schema(description = "Type of employment", example = "FULL_TIME", requiredMode = Schema.RequiredMode.REQUIRED)
     private JobType type;
     
     @NotNull(message = "Workplace type is required")
-    @Schema(description = "Work arrangement type", example = "HYBRID", required = true)
+    @Schema(description = "Work arrangement type", example = "HYBRID", requiredMode = Schema.RequiredMode.REQUIRED)
     private WorkplaceType workplaceType = WorkplaceType.ONSITE;
     
     @Schema(description = "Experience level required", example = "SENIOR")
@@ -71,7 +71,7 @@ public class JobRequest {
     // Rich text fields
     @NotBlank(message = "Job description is required")
     @Schema(description = "Detailed description of the job role (HTML supported)",
-            example = "<p>We are looking for a <b>passionate</b> developer...</p>", required = true)
+            example = "<p>We are looking for a <b>passionate</b> developer...</p>", requiredMode = Schema.RequiredMode.REQUIRED)
     private String description;
     
     @Schema(description = "Job responsibilities (HTML supported)",

@@ -96,7 +96,7 @@ public class ResumeController {
             @PathVariable Long id,
             @AuthenticationPrincipal UserPrincipal userPrincipal) {
         User user = userPrincipal.getUser();
-        Resume resume = cloudinaryService.setPrimaryResume(id, user);
+        // Resume resume = cloudinaryService.setPrimaryResume(id, user);
         ResumeResponse resumeResponse = cloudinaryService.getResumeWithPrimaryStatus(id, user);
         return ResponseEntity.ok(resumeResponse);
     }

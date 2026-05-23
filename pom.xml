@@ -12,7 +12,7 @@
 	<artifactId>jobportal</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<name>jobportal</name>
-	<description>Demo project for Spring Boot</description>
+	<description>Job Portal project for Spring Boot</description>
 	<url/>
 	<licenses>
 		<license/>

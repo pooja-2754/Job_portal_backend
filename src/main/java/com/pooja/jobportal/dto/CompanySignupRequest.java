@@ -18,17 +18,17 @@ public class CompanySignupRequest {
 
     @NotBlank(message = "Company name is required")
     @Size(max = 255, message = "Company name must not exceed 255 characters")
-    @Schema(description = "Company name", example = "Tech Corp", required = true)
+    @Schema(description = "Company name", example = "Tech Corp", requiredMode = Schema.RequiredMode.REQUIRED)
     private String name;
 
     @NotBlank(message = "Email is required")
     @Email(message = "Invalid email format")
-    @Schema(description = "Company email for authentication", example = "company@techcorp.com", required = true)
+    @Schema(description = "Company email for authentication", example = "company@techcorp.com", requiredMode = Schema.RequiredMode.REQUIRED)
     private String email;
 
     @NotBlank(message = "Password is required")
     @Size(min = 6, message = "Password must be at least 6 characters")
-    @Schema(description = "Company password", example = "password123", required = true)
+    @Schema(description = "Company password", example = "password123", requiredMode = Schema.RequiredMode.REQUIRED)
     private String password;
 
     @Schema(description = "Company logo URL", example = "https://cdn.example.com/logos/techcorp.png")

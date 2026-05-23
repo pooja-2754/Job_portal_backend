@@ -17,10 +17,10 @@ public class CompanyLoginRequest {
 
     @NotBlank(message = "Email is required")
     @Email(message = "Invalid email format")
-    @Schema(description = "Company email", example = "company@techcorp.com", required = true)
+    @Schema(description = "Company email", example = "company@techcorp.com", requiredMode = Schema.RequiredMode.REQUIRED)
     private String email;
 
     @NotBlank(message = "Password is required")
-    @Schema(description = "Company password", example = "password123", required = true)
+    @Schema(description = "Company password", example = "password123", requiredMode = Schema.RequiredMode.REQUIRED)
     private String password;
 }
