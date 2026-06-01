@@ -1,5 +1,6 @@
 package com.pooja.jobportal.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.pooja.jobportal.model.*;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
@@ -10,6 +11,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 @Data
+@JsonIgnoreProperties(ignoreUnknown = true)
 @Schema(description = "Request object for creating or updating a job")
 public class JobRequest {
     
